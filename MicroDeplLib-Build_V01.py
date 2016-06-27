@@ -53,15 +53,27 @@ def Get_Info(current_file):
         ZAID = str(int(ZAID/10))+str('1') #'1' is used for metastable state
         ID = ID+str('m')
 
-    ################################################################
-    ####    get half life (seconds)                               ##
-    ################################################################
-    
-
     linecache.clearcache()
     return (ZAID,ID)
+
+def Get_HalfLife(current_file): # returns half life of isotope in seconds
+    file1 = open(current_file,'r')
+    lineNum = 1
+    check = True
+    while check:
+        line = file1.readline() #read through each line in file
+        if " 8457" in line: #signifies library 8 (decay) MT=457, rad decay data set
+            line = file1.readline() #go to next line
+            a = line.split()
+            Half_Life=a[0]
+            if Half_Life == '0.000000+0': #signifies that isotope is stable
+                Half_Life = str('Infinity')
+            # print(Half_Life)
+            check = False
+    return(Half_Life)
 
 for filename in os.listdir(path):
     current_file = path+'/'+filename
     ZAID,ID = Get_Info(current_file)
-    outfile1.write('ID = ' + str(ID) + '\t\t\tZAID = ' + str(ZAID) + '\n')
+    Half_Life = Get_HalfLife(current_file)
+    outfile1.write('ID = ' + str(ID) + '\t\t\tZAID = ' + str(ZAID) + '\t\t\tT_{1/2} = ' + str(Half_Life) + "\n")

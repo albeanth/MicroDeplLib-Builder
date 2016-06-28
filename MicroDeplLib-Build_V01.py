@@ -4,6 +4,7 @@ import string
 import linecache
 import math
 import re
+import numpy
 import xml.etree.ElementTree as ET
 
 # Currently only capable of creating library for decay calculations.
@@ -12,6 +13,9 @@ import xml.etree.ElementTree as ET
 path = '../ENDF7.1/SubLib_Decay/decay' # set path to point to ENDF7.1 files
 outfile1 = open('DeplSubLib_Decay.txt','w')
 mass_n = 1.00866491578 # mass of nuetron in amu. Source - ENDF7.1 manual
+
+## Decay mode interpreter - direct from ENDF7.1 manual.
+DecMod = ['gamma-ray','Beta-minus','EC/Beta-plus','Isomeric-Trans','Alpha','neutron-emission','Spont-fission','Proton-emission','N/A','N/A','unknown'] # entries 8 and 9 are left out in manual
 
 def Get_Info(current_file):
     ################################################################
@@ -56,24 +60,99 @@ def Get_Info(current_file):
     linecache.clearcache()
     return (ZAID,ID)
 
-def Get_HalfLife(current_file): # returns half life of isotope in seconds
+def Get_DecayInfo(current_file): # returns half life of isotope in seconds
     file1 = open(current_file,'r')
-    lineNum = 1
+    lineNum = 0
     check = True
     while check:
-        line = file1.readline() #read through each line in file
-        if " 8457" in line: #signifies library 8 (decay) MT=457, rad decay data set
-            line = file1.readline() #go to next line
-            a = line.split()
+        lineNum +=1
+        line = file1.readline() #read through each line in file starting at line 1
+        if " 8457" in line: #signifies start of library 8 (decay) MT=457, rad decay data set
+            DecLibStart = lineNum
+            # get half life
+            tmp = linecache.getline(current_file,(DecLibStart+1),None)
+            a = tmp.split()
             Half_Life=a[0]
-            if Half_Life == '0.000000+0': #signifies that isotope is stable
+            if Half_Life == '0.000000+0': #signifies that isotope is stable no decay data
                 Half_Life = str('Infinity')
-            # print(Half_Life)
+                Mode = None
+                Q = None
+                BR = None
+                break
+            else:
+                # get number of decay modes (NDK)
+                tmp = linecache.getline(current_file,(DecLibStart+3),None)
+                a = tmp.split()
+                # print(a)
+                NDK=int(a[5])
+                # print(NDK)
+                # get decay info: Modes, Q values, and Branching Ratios (BR)
+                Mode = numpy.empty(NDK,dtype=float) #create decay mode vector of length equal to NDK
+                Q = numpy.empty(NDK,dtype=float) #create Q value vector for each mode
+                BR = numpy.empty(NDK,dtype=float) #create Branching ratio  vector of length equal to NDK
+                RTYP_start = DecLibStart+4 # line number in which mode of decay identifiers (RYTP) start
+                i = 0
+                while (i<NDK):
+                    tmp = linecache.getline(current_file,(RTYP_start+i),None)
+                    a = tmp.split()
+                    # print(a)
+                    ModeTmp = a[0]
+                    ModeTmp = re.split("([\+\-])", ModeTmp) #splits ModeTmp into 3 components
+                    ModeTmp.insert(1, "E") #inserts the E needed for scientific notation
+                    ModeTmp = "".join(ModeTmp[0:]) #rejoins array of strings into single string
+                    Mode[i] = float(ModeTmp)
+                    # print(Mode[i])
+
+                    QTmp = a[2]
+                    QTmp = re.split("([\+\-])", QTmp) #splits ModeTmp into 3 components
+                    QTmp.insert(1, "E") #inserts the E needed for scientific notation
+                    QTmp = "".join(QTmp[0:]) #rejoins array of strings into single string
+                    Q[i] = float(QTmp)
+
+                    BRTmp = a[4]
+                    BRTmp = re.split("([\+\-])", BRTmp) #splits ModeTmp into 3 components
+                    BRTmp.insert(1, "E") #inserts the E needed for scientific notation
+                    BRTmp = "".join(ModeTmp[0:]) #rejoins array of strings into single string
+                    BR[i] = float(BRTmp)
+
+                    # print(Mode)
+                    # print(Q)
+                    # print(BR)
+
+                    i += 1
             check = False
-    return(Half_Life)
+    return(Half_Life, Mode, Q, BR)
+
 
 for filename in os.listdir(path):
-    current_file = path+'/'+filename
-    ZAID,ID = Get_Info(current_file)
-    Half_Life = Get_HalfLife(current_file)
-    outfile1.write('ID = ' + str(ID) + '\t\t\tZAID = ' + str(ZAID) + '\t\t\tT_{1/2} = ' + str(Half_Life) + "\n")
+
+    if (filename == 'dec-002_He_010.endf'):
+        break
+
+    print(filename)
+
+    if ((filename == 'dec-003_Li_008.endf') or (filename == 'dec-003_Li_009.endf')):
+        pass
+    else:
+        current_file = path+'/'+filename
+        ZAID,ID = Get_Info(current_file)
+        Half_Life, Mode, Q, BR = Get_DecayInfo(current_file)
+        # print(Mode)
+        if Mode == None:
+            TranslatedMode = None
+            NumOfModes = None
+        else:
+            NumOfModes=len(Mode)
+            TranslatedMode = numpy.chararray((NumOfModes,7),16,True) # 16 is the length of the longest element in DecMod. True - changes unicode setting to true
+            # print(Mode)
+            # print(TranslatedMode)
+            idx=0
+            while idx < NumOfModes:
+                for idy,elem in enumerate(Mode):
+                    print(elem)
+                    if ((elem-int(elem))>0.):
+                        tmp = str(elem).split('.')
+                        TranslatedMode[idx] = DecMod[int(elem)]
+
+        # outfile1.write('ID = ' + str(ID) + '\t\t\tZAID = ' + str(ZAID) + '\t\tT_{1/2} = ' + str(Half_Life) + '\t\tNum of Decay Modes = ' + str(NumOfModes) + '\n')
+        # outfile1.write('\t\t Decay Mode(s) = ' + str(TranslatedMode) + '\n\t\t Q-value(s) = ' + str(Q) + '\n\t\t Branching Ratio(s) = ' + str(BR) + '\n\n')

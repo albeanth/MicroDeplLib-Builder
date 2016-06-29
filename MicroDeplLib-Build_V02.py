@@ -100,25 +100,17 @@ def Get_DecayInfo(count, current_file):
                     tmp = linecache.getline(current_file,(RTYP_start+i),None)
                     a = tmp.split()
                     # print(a)
+
                     ModeTmp = a[0]
-                    ModeTmp = re.split("([\+\-])", ModeTmp) #splits ModeTmp into 3 components
-                    ModeTmp.insert(1, "E") #inserts the E needed for scientific notation
-                    ModeTmp = "".join(ModeTmp[0:]) #rejoins array of strings into single string
-                    Mode[i] = float(ModeTmp)
+                    Mode[i] = ScientificNotation(ModeTmp)
                     # print(Mode[i])
 
                     QTmp = a[2]
-                    QTmp = re.split("([\+\-])", QTmp) #splits ModeTmp into 3 components
-                    QTmp.insert(1, "E") #inserts the E needed for scientific notation
-                    QTmp = "".join(QTmp[0:]) #rejoins array of strings into single string
-                    Q[i] = float(QTmp)
+                    Q[i] = ScientificNotation(QTmp)
                     # print(QTmp)
 
                     BRTmp = a[4]
-                    BRTmp = re.split("([\+\-])", BRTmp) #splits ModeTmp into 3 components
-                    BRTmp.insert(1, "E") #inserts the E needed for scientific notation
-                    BRTmp = "".join(BRTmp[0:]) #rejoins array of strings into single string
-                    BR[i] = float(BRTmp)
+                    BR[i] = ScientificNotation(BRTmp)
 
                     # print(Mode)
                     # print(Q)
@@ -127,6 +119,15 @@ def Get_DecayInfo(count, current_file):
                     i += 1
             check = False
     return(Half_Life, Mode, Q, BR)
+
+def ScientificNotation(tmp):
+    if (('+' in tmp) or ('-' in tmp)):
+        tmp = re.split("([\+\-])", tmp) #splits ModeTmp into 3 components
+        tmp.insert(1, "E") #inserts the E needed for scientific notation
+        tmp = "".join(tmp[0:]) #rejoins array of strings into single string
+    else:
+        pass
+    return(float(tmp))
 
 
 ################################################################################

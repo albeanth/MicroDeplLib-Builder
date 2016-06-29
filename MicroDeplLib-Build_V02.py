@@ -129,6 +129,41 @@ def ScientificNotation(tmp):
         pass
     return(float(tmp))
 
+def TranslateDecayMode(Mode):
+    if Mode == None:
+        TranslatedMode = None
+        NumOfModes = None
+    else:
+        NumOfModes=len(Mode)
+        TranslatedMode = numpy.chararray((NumOfModes,7),16,True) # 16 is the length of the longest element in DecMod. True - changes unicode setting to true
+        # print(Mode)
+        # print(TranslatedMode)
+        TranslatedMode=[]
+        for idy,elem in enumerate(Mode):
+            # print("base element = "+str(elem))
+            if ((elem-int(elem))>0.):
+                tmp1 = str(elem).split('.')
+                # print(tmp1)
+                tmp2 = list(map(str, tmp1[1]))
+                # print(tmp2)
+                tmp1[1]=tmp2
+                # print(tmp1)
+                for idx,elem1 in enumerate(tmp1):
+                    # print('elem1 = '+str(elem1)+' has count of = '+str(elem1.count(elem1)))
+                    if elem1.count(elem1)==0:
+                        dum1 = numpy.chararray(len(elem1),16,True)
+                        for idx2,elem2 in enumerate(elem1):
+                            # print(DecMod[int(elem2)])
+                            dum1[idx2] = DecMod[int(elem2)]
+                    else:
+                        dum0 = DecMod[int(elem)]
+                        # print(dum0)
+                dum = str(dum0)+str(dum1)
+            else:
+                dum = DecMod[int(elem)]
+            TranslatedMode.append(dum)
+    return(NumOfModes, TranslatedMode)
+
 
 ################################################################################
 ##              START MAIN                                                    ##
@@ -150,39 +185,8 @@ for filename in os.listdir(path):
         ZAID,ID = Get_Info(current_file)
         Half_Life, Mode, Q, BR = Get_DecayInfo(count,current_file)
         # print(Mode)
-        if Mode == None:
-            TranslatedMode = None
-            NumOfModes = None
-        else:
-            NumOfModes=len(Mode)
-            TranslatedMode = numpy.chararray((NumOfModes,7),16,True) # 16 is the length of the longest element in DecMod. True - changes unicode setting to true
-            # print(Mode)
-            # print(TranslatedMode)
-            TranslatedMode=[]
-            for idy,elem in enumerate(Mode):
-                # print("base element = "+str(elem))
-                if ((elem-int(elem))>0.):
-                    tmp1 = str(elem).split('.')
-                    # print(tmp1)
-                    tmp2 = list(map(str, tmp1[1]))
-                    # print(tmp2)
-                    tmp1[1]=tmp2
-                    # print(tmp1)
-                    for idx,elem1 in enumerate(tmp1):
-                        # print('elem1 = '+str(elem1)+' has count of = '+str(elem1.count(elem1)))
-                        if elem1.count(elem1)==0:
-                            dum1 = numpy.chararray(len(elem1),16,True)
-                            for idx2,elem2 in enumerate(elem1):
-                                # print(DecMod[int(elem2)])
-                                dum1[idx2] = DecMod[int(elem2)]
-                        else:
-                            dum0 = DecMod[int(elem)]
-                            # print(dum0)
-                    dum = str(dum0)+str(dum1)
-                else:
-                    dum = DecMod[int(elem)]
-                TranslatedMode.append(dum)
-            # print(TranslatedMode)
+        NumOfModes, TranslatedMode = TranslateDecayMode(Mode)
+
 
 
     outfile1.write('ID = ' + str(ID) + '\t\t\tZAID = ' + str(ZAID) + '\t\tT_{1/2} = ' + str(Half_Life) + '\t\tNum of Decay Modes = ' + str(NumOfModes) + '\n')

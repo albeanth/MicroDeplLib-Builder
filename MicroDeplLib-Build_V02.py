@@ -17,7 +17,7 @@ mass_n = 1.00866491578 # mass of nuetron in amu. Source - ENDF7.1 manual
 ## Decay mode interpreter - direct from ENDF7.1 manual.
 DecMod = ['gamma-ray','Beta-minus','EC/Beta-plus','Isomeric-Trans','Alpha','neutron-emission','Spont-fission','Proton-emission','N/A','N/A','unknown'] # entries 8 and 9 are left out in manual
 
-def Get_Info(current_file):
+def Get_Info(current_file): #get ZAID and isotope ID
     ################################################################
     ##           get base isotope ZAID                            ##
     ################################################################
@@ -60,7 +60,7 @@ def Get_Info(current_file):
     linecache.clearcache()
     return (ZAID,ID)
 
-def Get_DecayInfo(count, current_file):
+def Get_DecayInfo(count, current_file): #get Half_Life, Decay mode(s), Q value(s), and branching ratio(s)
     file1 = open(current_file,'r')
     lineNum = 0
     check = True
@@ -120,7 +120,7 @@ def Get_DecayInfo(count, current_file):
             check = False
     return(Half_Life, Mode, Q, BR)
 
-def ScientificNotation(tmp):
+def ScientificNotation(tmp): # convert ENDF "1.00000+2" to "1.00000E+2"
     if (('+' in tmp) or ('-' in tmp)):
         tmp = re.split("([\+\-])", tmp) #splits ModeTmp into 3 components
         tmp.insert(1, "E") #inserts the E needed for scientific notation
@@ -129,7 +129,7 @@ def ScientificNotation(tmp):
         pass
     return(float(tmp))
 
-def TranslateDecayMode(Mode):
+def TranslateDecayMode(Mode): #translate RTYP numbers to readable decay types
     if Mode == None:
         TranslatedMode = None
         NumOfModes = None
@@ -164,7 +164,6 @@ def TranslateDecayMode(Mode):
             TranslatedMode.append(dum)
     return(NumOfModes, TranslatedMode)
 
-
 ################################################################################
 ##              START MAIN                                                    ##
 ################################################################################
@@ -186,8 +185,6 @@ for filename in os.listdir(path):
         Half_Life, Mode, Q, BR = Get_DecayInfo(count,current_file)
         # print(Mode)
         NumOfModes, TranslatedMode = TranslateDecayMode(Mode)
-
-
 
     outfile1.write('ID = ' + str(ID) + '\t\t\tZAID = ' + str(ZAID) + '\t\tT_{1/2} = ' + str(Half_Life) + '\t\tNum of Decay Modes = ' + str(NumOfModes) + '\n')
     outfile1.write('\t\t Decay Mode(s) = ' + str(TranslatedMode) + '\n\t\t Q-value(s) = ' + str(Q) + '\n\t\t Branching Ratio(s) = ' + str(BR) + '\n\n')

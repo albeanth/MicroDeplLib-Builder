@@ -5,8 +5,9 @@ import linecache
 import math
 import re
 import numpy
+#packages needed for xml creation and parsing
 import xml.etree.ElementTree as ET
-
+import xml.dom.minidom as minidom
 
 # Currently only capable of creating library for decay calculations.
 # No neutron reactions are included in this version.
@@ -312,11 +313,19 @@ else:
 
 SFyields = os.listdir('../ENDF7.1/SubLib_SFyields/sfy') #gets list of files with Spontaneous fission yields
 
+# Set up xml output information
+root = ET.Element("Decay_Library", Generator = "INL", Name = "General ENDF7.1", Ver = "1.0")
+LibTitle = ET.ElementTree(root)
+XML_out = 'DecayData.xml'
+# os.remove(XML_out)
+file = open(XML_out, 'w', encoding = 'utf-8')
+# LibTitle.write(file, encoding='unicode')
+
 ## Start looping through endf files.
 count = 0 # start counter for number of files program runs through
 for filename in os.listdir(path):
     count +=1
-    # if (filename == 'dec-002_He_003.endf'):
+    # if (filename == 'dec-001_H_002.endf'):
     #     break
 
 # filename = 'dec-005_B_012.endf'; count = 0
@@ -337,5 +346,32 @@ for filename in os.listdir(path):
         NumOfModes, TranslatedMode = TranslateDecayMode(Mode)
         Daughters = ID_DaughterProducts(Mode,Z,N,SFyields,current_file)
         # print('Daughters are: '+str(Daughters)+'\n')
-        outfile1.write('ID = ' + str(ID) + '\t\t\tZAID = ' + str(ZAID) + '\t\tT_{1/2} = ' + str(Half_Life) + '\t\tNum of Decay Modes = ' + str(NumOfModes) + '\n')
-        outfile1.write('\t\t Decay Mode(s) = ' + str(TranslatedMode) + '\n\t\t Q-value(s) = ' + str(Q) + '\n\t\t Branching Ratio(s) = ' + str(BR) + '\n'+'\t\t Daughter Product(s) = '+str(Daughters)+'\n\n')
+        # outfile1.write('ID = ' + str(ID) + '\t\t\tZAID = ' + str(ZAID) + '\t\tT_{1/2} = ' + str(Half_Life) + '\t\tNum of Decay Modes = ' + str(NumOfModes) + '\n')
+        # outfile1.write('\t\t Decay Mode(s) = ' + str(TranslatedMode) + '\n\t\t Q-value(s) = ' + str(Q) + '\n\t\t Branching Ratio(s) = ' + str(BR) + '\n'+'\t\t Daughter Product(s) = '+str(Daughters)+'\n\n')
+
+        isotope = ET.SubElement(root, ("Isotope"), Halflife = str(Half_Life), Name = str(ID), ZAID = str(ZAID) )
+        Type = ET.SubElement(isotope, "type")
+        Type.text = str(TranslatedMode).strip("[]")
+        Progeny = ET.SubElement(isotope, "daughters")
+        Progeny.text = str(Daughters).strip("[]")
+        Branch_Ratio = ET.SubElement(isotope, "branch_ratio")
+        Branch_Ratio.text = str(BR).strip("[]")
+        # Lib = ET.ElementTree(isotope)
+        # LibTitle.write(file, encoding='unicode')
+
+LibTitle.write(file, encoding='unicode')
+file.close
+
+### temp workaround for parsing....
+# os.system('xmllint --format DecayData.xml > DecayData_tmp.xml')
+# os.system('rm DecayData.xml')
+# os.system('mv DecayData_tmp.xml DecayData.xml')
+
+
+#### The code below works on simple toy problems but not here.... so use workaround system commands above.
+# use xml.dom.minidom and parse out previously created xml file.
+# xml = minidom.parse(XML_out)
+# pretty_xml_as_string = xml.toprettyxml()
+# file = open(XML_out, 'w', encoding = 'utf-8')
+# file.write(pretty_xml_as_string)
+# file.close()

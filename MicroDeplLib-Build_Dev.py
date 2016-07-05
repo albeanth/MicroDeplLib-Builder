@@ -5,8 +5,9 @@ import linecache
 import math
 import re
 import numpy
+#packages needed for xml creation and parsing
 import xml.etree.ElementTree as ET
-
+import xml.dom.minidom as minidom
 
 # Currently only capable of creating library for decay calculations.
 # No neutron reactions are included in this version.
@@ -101,6 +102,7 @@ def Get_DecayInfo(count, current_file): #get Half_Life, Decay mode(s), Q value(s
                 BR = None
                 break
             else:
+                Half_Life=ScientificNotation(a[0])
                 # get number of decay modes (NDK)
                 tmp = linecache.getline(current_file,(DecLibStart+3),None)
                 a = tmp.split()
@@ -150,7 +152,7 @@ def ScientificNotation(tmp): # convert ENDF "1.00000+2" to "1.00000E+2"
         tmp = "".join(tmp[0:]) #rejoins array of strings into single string
     else:
         pass
-    return(float(tmp))
+    return(tmp)
 
 def TranslateDecayMode(Mode): #translate RTYP numbers to readable decay types
     if Mode == None:
@@ -198,7 +200,7 @@ def ID_DaughterProducts(Mode,Z,N,SFyields,current_file):
                 print('  No data for Ni-48 beta+ decay. Need data for Co-48. Passing...')
                 tmp = 'N/A'
                 continue
-            if ((current_file == '../ENDF7.1/SubLib_Decay/decay/dec-028_Ni_048.endf') and (elem == 7.7)):
+            elif ((current_file == '../ENDF7.1/SubLib_Decay/decay/dec-028_Ni_048.endf') and (elem == 7.7)):
                 print('  No data for proton-proton decay. Need data for Co-47. Passing...')
                 tmp = 'N/A'
                 continue
@@ -312,6 +314,12 @@ else:
 
 SFyields = os.listdir('../ENDF7.1/SubLib_SFyields/sfy') #gets list of files with Spontaneous fission yields
 
+# Set up xml output information
+XML_out = 'DecayData.xml'
+file1 = open(XML_out, 'w', encoding = 'utf-8')
+root = ET.Element("Decay_Library", Generator = "INL", Name = "General ENDF7.1", Ver = "1.0")
+Lib = ET.ElementTree(root)
+
 ## Start looping through endf files.
 count = 0 # start counter for number of files program runs through
 for filename in os.listdir(path):
@@ -337,5 +345,32 @@ for filename in os.listdir(path):
         NumOfModes, TranslatedMode = TranslateDecayMode(Mode)
         Daughters = ID_DaughterProducts(Mode,Z,N,SFyields,current_file)
         # print('Daughters are: '+str(Daughters)+'\n')
-        outfile1.write('ID = ' + str(ID) + '\t\t\tZAID = ' + str(ZAID) + '\t\tT_{1/2} = ' + str(Half_Life) + '\t\tNum of Decay Modes = ' + str(NumOfModes) + '\n')
-        outfile1.write('\t\t Decay Mode(s) = ' + str(TranslatedMode) + '\n\t\t Q-value(s) = ' + str(Q) + '\n\t\t Branching Ratio(s) = ' + str(BR) + '\n'+'\t\t Daughter Product(s) = '+str(Daughters)+'\n\n')
+        # outfile1.write('ID = ' + str(ID) + '\t\t\tZAID = ' + str(ZAID) + '\t\tT_{1/2} = ' + str(Half_Life) + '\t\tNum of Decay Modes = ' + str(NumOfModes) + '\n')
+        # outfile1.write('\t\t Decay Mode(s) = ' + str(TranslatedMode) + '\n\t\t Q-value(s) = ' + str(Q) + '\n\t\t Branching Ratio(s) = ' + str(BR) + '\n'+'\t\t Daughter Product(s) = '+str(Daughters)+'\n\n')
+
+        isotope = ET.SubElement(root, ("Isotope"), Halflife = str(Half_Life), Name = str(ID), ZAID = str(ZAID) )
+        Type = ET.SubElement(isotope, "type")
+        Type.text = str(TranslatedMode).strip("[]")
+        Progeny = ET.SubElement(isotope, "daughters")
+        Progeny.text = str(Daughters).strip("[]")
+        Branch_Ratio = ET.SubElement(isotope, "branch_ratio")
+        Branch_Ratio.text = str(BR).strip("[]")
+
+
+Lib.write(file1, encoding='unicode')
+file1.close
+
+### temp workaround for parsing.
+# os.system('xmllint --format DecayData.xml > DecayData_tmp.xml')
+# os.system('rm DecayData.xml')
+# os.system('mv DecayData_tmp.xml DecayData.xml')
+
+# doc2 = minidom.parse(XML_out)
+
+#### The code below works on simple toy problems but not here.... so use workaround system commands above.
+## use xml.dom.minidom and parse out previously created xml file.
+# xml = minidom.parse('DecayData.xml')
+# pretty_xml_as_string = xml.toprettyxml()
+# file2 = open('DecayData.xml', 'w', encoding = 'utf-8')
+# file2.write(pretty_xml_as_string)
+# file2.close()

@@ -102,6 +102,7 @@ def Get_DecayInfo(count, current_file): #get Half_Life, Decay mode(s), Q value(s
                 BR = None
                 break
             else:
+                Half_Life=ScientificNotation(a[0])
                 # get number of decay modes (NDK)
                 tmp = linecache.getline(current_file,(DecLibStart+3),None)
                 a = tmp.split()
@@ -151,7 +152,7 @@ def ScientificNotation(tmp): # convert ENDF "1.00000+2" to "1.00000E+2"
         tmp = "".join(tmp[0:]) #rejoins array of strings into single string
     else:
         pass
-    return(float(tmp))
+    return(tmp)
 
 def TranslateDecayMode(Mode): #translate RTYP numbers to readable decay types
     if Mode == None:
@@ -199,7 +200,7 @@ def ID_DaughterProducts(Mode,Z,N,SFyields,current_file):
                 print('  No data for Ni-48 beta+ decay. Need data for Co-48. Passing...')
                 tmp = 'N/A'
                 continue
-            if ((current_file == '../ENDF7.1/SubLib_Decay/decay/dec-028_Ni_048.endf') and (elem == 7.7)):
+            elif ((current_file == '../ENDF7.1/SubLib_Decay/decay/dec-028_Ni_048.endf') and (elem == 7.7)):
                 print('  No data for proton-proton decay. Need data for Co-47. Passing...')
                 tmp = 'N/A'
                 continue
@@ -314,18 +315,16 @@ else:
 SFyields = os.listdir('../ENDF7.1/SubLib_SFyields/sfy') #gets list of files with Spontaneous fission yields
 
 # Set up xml output information
-root = ET.Element("Decay_Library", Generator = "INL", Name = "General ENDF7.1", Ver = "1.0")
-LibTitle = ET.ElementTree(root)
 XML_out = 'DecayData.xml'
-# os.remove(XML_out)
-file = open(XML_out, 'w', encoding = 'utf-8')
-# LibTitle.write(file, encoding='unicode')
+file1 = open(XML_out, 'w', encoding = 'utf-8')
+root = ET.Element("Decay_Library", Generator = "INL", Name = "General ENDF7.1", Ver = "1.0")
+Lib = ET.ElementTree(root)
 
 ## Start looping through endf files.
 count = 0 # start counter for number of files program runs through
 for filename in os.listdir(path):
     count +=1
-    # if (filename == 'dec-001_H_002.endf'):
+    # if (filename == 'dec-002_He_003.endf'):
     #     break
 
 # filename = 'dec-005_B_012.endf'; count = 0
@@ -356,22 +355,22 @@ for filename in os.listdir(path):
         Progeny.text = str(Daughters).strip("[]")
         Branch_Ratio = ET.SubElement(isotope, "branch_ratio")
         Branch_Ratio.text = str(BR).strip("[]")
-        # Lib = ET.ElementTree(isotope)
-        # LibTitle.write(file, encoding='unicode')
 
-LibTitle.write(file, encoding='unicode')
-file.close
+
+Lib.write(file1, encoding='unicode')
+file1.close
 
 ### temp workaround for parsing....
 # os.system('xmllint --format DecayData.xml > DecayData_tmp.xml')
 # os.system('rm DecayData.xml')
 # os.system('mv DecayData_tmp.xml DecayData.xml')
 
+# doc2 = minidom.parse(XML_out)
 
 #### The code below works on simple toy problems but not here.... so use workaround system commands above.
-# use xml.dom.minidom and parse out previously created xml file.
-# xml = minidom.parse(XML_out)
+## use xml.dom.minidom and parse out previously created xml file.
+# xml = minidom.parse('DecayData.xml')
 # pretty_xml_as_string = xml.toprettyxml()
-# file = open(XML_out, 'w', encoding = 'utf-8')
-# file.write(pretty_xml_as_string)
-# file.close()
+# file2 = open('DecayData.xml', 'w', encoding = 'utf-8')
+# file2.write(pretty_xml_as_string)
+# file2.close()

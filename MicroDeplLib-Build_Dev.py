@@ -9,17 +9,24 @@ import numpy
 import xml.etree.ElementTree as ET
 import xml.dom.minidom as minidom
 
-# Currently only capable of creating library for decay calculations.
-# No neutron reactions are included in this version.
-
-path = '../ENDF7.1/SubLib_Decay/decay' # set path to point to ENDF7.1 files
-outfile1 = open('DeplSubLib_Decay.txt','w')
+dec_path = '../ENDF7.1/SubLib_Decay/decay' # set path to point to ENDF7.1 files
+nRxn_path = '../ENDF7.1/SubLib_NeutronRxn/neutrons' # set path to point to ENDF7.1 files
 mass_n = 1.00866491578 # mass of nuetron in amu. Source - ENDF7.1 manual
 
-## Decay mode interpreter - direct from ENDF7.1 manual.
-DecMod = ['gamma-ray','Beta-minus','EC/Beta-plus','Isomeric-Trans','Alpha','neutron-emission','Spont-fission','Proton-emission','N/A','N/A','unknown'] # entries 8 and 9 are left out in manual
+dec_List = os.listdir(dec_path) # get list of isotope files in decay sublibrary
+nRxn_List = os.listdir(nRxn_path) # get list of isotope files in neutron reactions
 
-def Get_Info(current_file,build_flag): #get ZAID and isotope ID
+## GENERAL PURPOSE FUCNTIONS
+def ScientificNotation(tmp): # convert ENDF "1.00000+2" to "1.00000E+2"
+    if (('+' in tmp) or ('-' in tmp)):
+        tmp = re.split("([\+\-])", tmp) #splits ModeTmp into 3 components
+        tmp.insert(1, "E") #inserts the E needed for scientific notation
+        tmp = "".join(tmp[0:]) #rejoins array of strings into single string
+    else:
+        pass
+    return(tmp)
+
+def Get_Info(current_file): #get ZAID and isotope ID
     ################################################################
     ##           get base isotope ZAID                            ##
     ################################################################
@@ -63,11 +70,9 @@ def Get_Info(current_file,build_flag): #get ZAID and isotope ID
 
     linecache.clearcache()
 
-    if build_flag == False: # need to build IsotopeID.txt
-        IsotopeID.write(str(ID)+'\t\t'+str(Z)+' '+str(N)+' '+str(A)+'\n')
+    return (ZAID,ID,Z,N)
 
-    return (ZAID,ID,A,Z,N)
-
+## DECAY SPECIFIC FUNCTIONS
 def Get_DecayInfo(count, current_file): #get Half_Life, Decay mode(s), Q value(s), and branching ratio(s)
     file1 = open(current_file,'r')
     lineNum = 0
@@ -145,16 +150,9 @@ def Get_DecayInfo(count, current_file): #get Half_Life, Decay mode(s), Q value(s
 
     return(Half_Life, Mode, Q, BR, nu)
 
-def ScientificNotation(tmp): # convert ENDF "1.00000+2" to "1.00000E+2"
-    if (('+' in tmp) or ('-' in tmp)):
-        tmp = re.split("([\+\-])", tmp) #splits ModeTmp into 3 components
-        tmp.insert(1, "E") #inserts the E needed for scientific notation
-        tmp = "".join(tmp[0:]) #rejoins array of strings into single string
-    else:
-        pass
-    return(tmp)
-
 def TranslateDecayMode(Mode): #translate RTYP numbers to readable decay types
+    ## Decay mode interpreter - direct from ENDF7.1 manual.
+    DecMod = ['gamma-ray','Beta-minus','EC/Beta-plus','Isomeric-Trans','Alpha','neutron-emission','Spont-fission','Proton-emission','N/A','N/A','unknown'] # entries 8 and 9 are left out in manual
     if Mode == None:
         TranslatedMode = None
         NumOfModes = None
@@ -236,24 +234,16 @@ def ID_DaughterProducts(Mode,Z,N,SFyields,current_file):
             Ztmp = Z; Ntmp = N
             if ((elem-int(elem))>0.): # checks to see if there are multiple decays, e.g. 1.534
                 tmp1 = str(elem).split('.') # splits decimal number into two strings, e.g. ['1', '534']
-                # print(tmp1)
                 tmp2 = list(map(str, tmp1[1])) # splits up '534' into independent strings - e.g. ['5', '3', '4']
-                # print(tmp2)
                 tmp1[1]=tmp2 # sets tmp2 into tmp1[1] --> tmp1 = ['1', ['5', '3', '4']]
-                # print(tmp1)
                 for idx,elem1 in enumerate(tmp1):
-                    # print('elem1 = '+str(elem1)+' has count of = '+str(elem1.count(elem1)))
                     if elem1.count(elem1)==0: # if elem1 is the ['5', '3', '4'] term
                         dum1 = numpy.chararray(len(elem1),16,True) # initialize dum1
                         for idx2,elem2 in enumerate(elem1): # for each term, '5','3','4'
-                            # print(DecMod[int(elem2)])
                             dum1[idx2],Ztmp,Ntmp = Get_Progeny(int(elem2),Ztmp,Ntmp,current_file) # all dumX variables have been translated to their progeny
-                            # print('dum1[idx] = '+str(dum1[idx2]))
                     else:
                         dum0,Ztmp,Ntmp = Get_Progeny(int(elem),Ztmp,Ntmp,current_file)
-                        # print(dum0)
                 dum = str(dum0)+str(dum1)
-                    # print(dum)
             else:
                 dum,Ztmp,Ntmp = Get_Progeny(int(elem),Ztmp,Ntmp,current_file)
             Daughters.append(dum)
@@ -299,63 +289,128 @@ def Get_Progeny(elem,Z,N,current_file):
     return(tmp,Z,N)
 
 
+## NEUTRON REACTION SPECIFIC FUNCTIONS
+def NeutronRxn_MATID(MatID_file):
+    file1 = open(MatID_file,'r')
+    lineNum = 0
+    check = True
+    ID = []
+    while check:
+        # print('i = '+str(i))
+        lineNum +=1
+        line = file1.readline() #read through each line in file starting at line 1
+        if ')' in line:
+            a = line.split()
+            # print(a)
+            if len(a[-1]) > 4:
+                ID.append(a[-1][-4:])
+            else:
+                ID.append(a[-1])
+            # print('ID[i] = '+str(ID[i]))
+            # i+=1
+        if not line:
+            check = False
+            break
+
+    return(ID)
+
 ################################################################################
 ##              START MAIN                                                    ##
 ################################################################################
 
-## Check if Isotope List needs to be built.
+#### Check if Isotope List for decay daughter product ID needs to be built.
 if not os.path.isfile('IsotopeID.txt'): # if the isotopeID list does not exist, create it
-    build_flag = False
+    # build_flag_dec = False
     IsotopeID = open('IsotopeID.txt','w')
-    IsotopeID.write('ID \t\t Z, N, A \n')
-    print('Need to build Isotope List. Once finished, please re-exeute script and decay library will be built.')
-else:
-    build_flag = True
+    IsotopeID.write('ID \t\t Z, N, \n')
+    print('\nBuilding decay sublibrary isotope List.')#Once finished, please re-exeute script and decay library will be built.\n')
+    for endf in dec_List:
+        dZAID,dID,Z,N = Get_Info(dec_path+'/'+endf)
+        IsotopeID.write(str(dID)+'\t\t'+str(Z)+' '+str(N)+' \n')
+# else:
+#     build_flag_dec = True
+
+#### Check if MatID List for neutron RXN needs to be built.
+if not os.path.isfile('nRxnMATlist.txt'):
+    # build_flag_nRxn = False
+    nRxnMATID = open('nRxnMATlist.txt','w')
+    nRxnMATID.write('MAT ID\n')
+    print('\nBuidling neutron reaction sublibrary MAT ID list.\n')
+    MatID_file = '../ENDF7.1/SubLib_NeutronRxn/n-ENDF-B-VII.1.endf.list'
+    MatID = NeutronRxn_MATID(MatID_file)
+    for elem in MatID:
+        nRxnMATID.write(str(elem)+'\n')
+# else:
+#     build_flag_nRxn = True
 
 SFyields = os.listdir('../ENDF7.1/SubLib_SFyields/sfy') #gets list of files with Spontaneous fission yields
 
 # Set up xml output information
-XML_out = 'DecayData.xml'
+XML_out = 'DepletionData.xml'
 file1 = open(XML_out, 'w', encoding = 'utf-8')
 root = ET.Element("Decay_Library", Generator = "INL", Name = "General ENDF7.1", Ver = "1.0")
 Lib = ET.ElementTree(root)
 
-## Start looping through endf files.
-count = 0 # start counter for number of files program runs through
-for filename in os.listdir(path):
-    count +=1
-    # if (filename == 'dec-002_He_003.endf'):
-    #     break
+#### START LOOPING THROUGH ENDF FILES
+dec_count = 0 # start counter for number of files program runs through
+# for decay_filename, nRxn_filename in zip(os.listdir(dec_path),os.listdir(nRxn_path)): # runs through both of the decay and neutron reaction sublibraries.
 
-# filename = 'dec-005_B_012.endf'; count = 0
 
-    if ((filename == 'dec-003_Li_008.endf') or (filename == 'dec-003_Li_009.endf')):
+dCnt = 0; nCnt=0
+while dCnt < len(dec_List):
+    decay_filename = dec_List[dCnt]
+    print(decay_filename)
+    dec_count +=1
+
+    if (decay_filename == 'dec-002_He_003.endf'):
+        break
+
+    # decay_file = 'dec-005_B_012.endf'; count = 0
+
+    if ((decay_filename == 'dec-003_Li_008.endf') or (decay_filename == 'dec-003_Li_009.endf')):
         pass
     else:
-        current_file = path+'/'+filename
+        decay_file = dec_path+'/'+decay_filename
 
-    if build_flag == False:
-         ZAID,ID,A,Z,N = Get_Info(current_file,build_flag)
-         pass
-    elif build_flag == True:
-        print(filename)
-        ZAID,ID,A,Z,N = Get_Info(current_file,build_flag)
-        Half_Life, Mode, Q, BR, nu = Get_DecayInfo(count,current_file)
-        # print(Mode)
-        NumOfModes, TranslatedMode = TranslateDecayMode(Mode)
-        Daughters = ID_DaughterProducts(Mode,Z,N,SFyields,current_file)
-        # print('Daughters are: '+str(Daughters)+'\n')
-        # outfile1.write('ID = ' + str(ID) + '\t\t\tZAID = ' + str(ZAID) + '\t\tT_{1/2} = ' + str(Half_Life) + '\t\tNum of Decay Modes = ' + str(NumOfModes) + '\n')
-        # outfile1.write('\t\t Decay Mode(s) = ' + str(TranslatedMode) + '\n\t\t Q-value(s) = ' + str(Q) + '\n\t\t Branching Ratio(s) = ' + str(BR) + '\n'+'\t\t Daughter Product(s) = '+str(Daughters)+'\n\n')
+    ## RADIOACTIVE DECAY INFORMATION.
+    # if build_flag_dec == False:
+    #      pass
+    # elif build_flag_dec == True:
+    # print(decay_filename)
+    dZAID,dID,Z,N = Get_Info(decay_file)
+    # print('dZAID = '+str(dZAID)+'\ndID = '+str(dID)+'\nZ = '+str(Z)+'; N = '+str(N))
+    Half_Life, Mode, Q, BR, nu = Get_DecayInfo(dec_count,decay_file)
+    NumOfModes, TranslatedMode = TranslateDecayMode(Mode)
+    Daughters = ID_DaughterProducts(Mode,Z,N,SFyields,decay_file)
 
-        isotope = ET.SubElement(root, ("Isotope"), Halflife = str(Half_Life), Name = str(ID), ZAID = str(ZAID) )
-        Type = ET.SubElement(isotope, "type")
-        Type.text = str(TranslatedMode).strip("[]")
-        Progeny = ET.SubElement(isotope, "daughters")
-        Progeny.text = str(Daughters).strip("[]")
-        Branch_Ratio = ET.SubElement(isotope, "branch_ratio")
-        Branch_Ratio.text = str(BR).strip("[]")
+    ######    PRINT ISOTOPE INFO   #########
+    ## RADIOACTIVE DECAY INFORMATION.
+    isotope = ET.SubElement(root, ("Isotope"), Halflife = str(Half_Life), Name = str(dID), ZAID = str(dZAID) )
+    SubLib_Dec = ET.SubElement(isotope, "Decay")
+    Type = ET.SubElement(SubLib_Dec, "type")
+    Type.text = str(TranslatedMode).strip("[]")
+    Progeny = ET.SubElement(SubLib_Dec, "daughters")
+    Progeny.text = str(Daughters).strip("[]")
+    Branch_Ratio = ET.SubElement(SubLib_Dec, "branch_ratio")
+    Branch_Ratio.text = str(BR).strip("[]")
+    ## END RAD DECAY INFO
 
+
+    while nCnt < len(nRxn_List):
+        nRxn_filename = nRxn_List[nCnt]
+
+        ## NEUTRON REACTION INFORMATION.
+        nRxn_file = nRxn_path+'/'+nRxn_filename
+        nrZAID,nrID,Z,N = Get_Info(nRxn_file)
+
+        if (str(nrID) == str(dID)):
+            print('  Match! \t  '+str(nRxn_filename)+'   adding Neutron Reactions')
+            SubLib_nRxn = ET.SubElement(isotope, "Neutron_Reaction")
+            nCnt += 1
+        else:
+            break
+
+    dCnt += 1
 
 Lib.write(file1, encoding='unicode')
 file1.close

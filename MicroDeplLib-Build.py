@@ -360,7 +360,7 @@ for filename in os.listdir(path):
 Lib.write(file1, encoding='unicode')
 file1.close
 
-### temp workaround for parsing....
+### temp workaround for parsing.
 # os.system('xmllint --format DecayData.xml > DecayData_tmp.xml')
 # os.system('rm DecayData.xml')
 # os.system('mv DecayData_tmp.xml DecayData.xml')

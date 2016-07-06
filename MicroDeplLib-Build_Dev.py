@@ -9,9 +9,22 @@ import numpy
 import xml.etree.ElementTree as ET
 import xml.dom.minidom as minidom
 
+import translators
+
 dec_path = '../ENDF7.1/SubLib_Decay/decay' # set path to point to ENDF7.1 files
 nRxn_path = '../ENDF7.1/SubLib_NeutronRxn/neutrons' # set path to point to ENDF7.1 files
 mass_n = 1.00866491578 # mass of nuetron in amu. Source - ENDF7.1 manual
+
+
+# ## prog is dictionary for translating decay types for progeny.
+# ## it takes on the {key: (value)} format of {Mode:(Z_increment, N_increment)}
+# prog = {0: (0,0), 1: (1,-1), 2:(-1,1), 3: (0,0), 4: (-2,-2), 5:(0,-1), 6: '   SF functionality not available', 7:(-1,0), 10:(0,0)}
+#
+# ## MT is a dictionary for translating neutron reaction types into daughter products
+# ## it takes on the same format as "prog"
+# #      (n,2n)  |  (n,3n)  |  (n,f)                                     |  (n,4n)  | (n,gamma) |    (n,p)    |  (n,d)      |    (n,t)     |   (n,He-3)  |  (n,alpha)   |  (n,2alpha) |  (n,3alpha)
+# MT = {16: (0,2), 17: (0,3), 18: 'fission - functionality not available', 37: (0,4), 102: (0, 1), 103: (-1, 1), 104: (-1, 0), 105: (-1, -1), 106: (-2, 0), 107: (-2, -1), 108:(-4, -2), 109:(-6, -3)}
+# MTkeysList = MT.keys()
 
 dec_List = os.listdir(dec_path) # get list of isotope files in decay sublibrary
 nRxn_List = os.listdir(nRxn_path) # get list of isotope files in neutron reactions
@@ -72,6 +85,19 @@ def Get_Info(current_file): #get ZAID and isotope ID
 
     return (ZAID,ID,Z,N)
 
+def NuclideIdentifier(Z,N):
+    IsotopeList = open('IsotopeID.txt','r')
+    for line in IsotopeList:
+        a = line.split()
+        # print(a)
+        if ((str(Z)==a[1]) and (str(N)==a[2])):
+            # print('  '+a[0])
+            name=a[0]
+            break # once the daughter is found, break out or else it will cycle through the entire file every single time is searches
+        elif (((Z==3) and (N==5)) or ((Z==3) and (N==6))): #if Li-8 or Li-9 (wrong file format, ticket submitted)
+            name = 'N/A'
+    return(name)
+
 ## DECAY SPECIFIC FUNCTIONS
 def Get_DecayInfo(count, current_file): #get Half_Life, Decay mode(s), Q value(s), and branching ratio(s)
     file1 = open(current_file,'r')
@@ -122,6 +148,9 @@ def Get_DecayInfo(count, current_file): #get Half_Life, Decay mode(s), Q value(s
                 Mode = numpy.empty(NDK,dtype=float) #create decay mode vector of length equal to NDK
                 Q = numpy.empty(NDK,dtype=float) #create Q value vector for each mode
                 BR = numpy.empty(NDK,dtype=float) #create Branching ratio  vector of length equal to NDK
+                # Mode = [] # this style might clean up code a bit. but it throws errors due to some format issues.
+                # Q = []
+                # BR = []
                 RTYP_start = DecLibStart+4 # line number in which mode of decay identifiers (RYTP) start
                 i = 0
                 while (i<NDK):
@@ -131,14 +160,17 @@ def Get_DecayInfo(count, current_file): #get Half_Life, Decay mode(s), Q value(s
 
                     ModeTmp = a[0]
                     Mode[i] = ScientificNotation(ModeTmp)
+                    # Mode.append(ScientificNotation(ModeTmp))
                     # print(Mode[i])
 
                     QTmp = a[2]
                     Q[i] = ScientificNotation(QTmp)
+                    # Q.append(ScientificNotation(QTmp))
                     # print(QTmp)
 
                     BRTmp = a[4]
                     BR[i] = ScientificNotation(BRTmp)
+                    # BR.append(ScientificNotation(BRTmp))
 
                     # print(Mode)
                     # print(Q)
@@ -158,7 +190,7 @@ def TranslateDecayMode(Mode): #translate RTYP numbers to readable decay types
         NumOfModes = None
     else:
         NumOfModes=len(Mode)
-        TranslatedMode = numpy.chararray((NumOfModes,7),16,True) # 16 is the length of the longest element in DecMod. True - changes unicode setting to true
+        # TranslatedMode = numpy.chararray((NumOfModes,7),16,True) # 16 is the length of the longest element in DecMod. True - changes unicode setting to true
         # print(Mode)
         # print(TranslatedMode)
         TranslatedMode=[]
@@ -240,79 +272,62 @@ def ID_DaughterProducts(Mode,Z,N,SFyields,current_file):
                     if elem1.count(elem1)==0: # if elem1 is the ['5', '3', '4'] term
                         dum1 = numpy.chararray(len(elem1),16,True) # initialize dum1
                         for idx2,elem2 in enumerate(elem1): # for each term, '5','3','4'
-                            dum1[idx2],Ztmp,Ntmp = Get_Progeny(int(elem2),Ztmp,Ntmp,current_file) # all dumX variables have been translated to their progeny
+                            Ztmp,Ntmp = translators.Progeny(int(elem2),Ztmp,Ntmp)
+                            dum1[idx2] = NuclideIdentifier(Ztmp,Ntmp) # all dumX variables have been translated to their progeny
                     else:
-                        dum0,Ztmp,Ntmp = Get_Progeny(int(elem),Ztmp,Ntmp,current_file)
+                        Ztmp,Ntmp = translators.Progeny(int(elem1),Ztmp,Ntmp)
+                        dum0 = NuclideIdentifier(Ztmp,Ntmp)
                 dum = str(dum0)+str(dum1)
             else:
-                dum,Ztmp,Ntmp = Get_Progeny(int(elem),Ztmp,Ntmp,current_file)
+                Ztmp,Ntmp = translators.Progeny(int(elem),Ztmp,Ntmp)
+                dum = NuclideIdentifier(Ztmp,Ntmp)
             Daughters.append(dum)
     return(Daughters)
 
-def Get_Progeny(elem,Z,N,current_file):
-    IsotopeList = open('IsotopeID.txt','r')
-    if elem == 0: # gamma
-        pass
-    elif elem == 1: # \beta^-
-        N-=1; Z+=1
-    elif elem == 2: # e.c. / \beta^+
-        N+=1; Z-=1
-    elif elem == 3: # I.T.
-        pass
-    elif elem == 4: # alpha
-        N-=2; Z-=2
-    elif elem == 5: #neutron emission
-        N-=1
-    elif elem == 6: #SF (NEED TO DEVELOP)
-        if current_file in SFyields:
-            print(str(current_file)+' do stuff here\n')
-        else:
-            print('no SFyield info given for '+str(current_file)+'\n')
-    elif elem == 7: # Proton-emission
-        Z-=1
-    elif elem == 10: # unknown
-        pass
-    else:
-        print('I don''t know what decay type I am trying to translate... Quitting.')
-        sys.exit()
-    # print(str(Z)+' '+str(N))
-    for line in IsotopeList:
-        a = line.split()
-        # print(a)
-        if ((str(Z)==a[1]) and (str(N)==a[2])):
-            # print('  '+a[0])
-            tmp=a[0]
-            break # once the daughter is found, break out or else it will cycle through the entire file every single time is searches
-        elif (((Z==3) and (N==5)) or ((Z==3) and (N==6))): #if Li-8 or Li-9 (wrong file format, ticket submitted)
-            tmp = 'N/A'
-
-    return(tmp,Z,N)
-
-
 ## NEUTRON REACTION SPECIFIC FUNCTIONS
-def NeutronRxn_MATID(MatID_file):
+def NeutronRxn_MATID(MatID_file): # obtains MAT ID values for neutron reaction sublibrary
     file1 = open(MatID_file,'r')
     lineNum = 0
     check = True
     ID = []
     while check:
-        # print('i = '+str(i))
         lineNum +=1
         line = file1.readline() #read through each line in file starting at line 1
         if ')' in line:
             a = line.split()
-            # print(a)
             if len(a[-1]) > 4:
                 ID.append(a[-1][-4:])
             else:
                 ID.append(a[-1])
-            # print('ID[i] = '+str(ID[i]))
-            # i+=1
         if not line:
             check = False
             break
 
     return(ID)
+
+def Get_nRxn(nRxn_file,Z,N):
+    nRxnType = []
+    nRxnProg = []
+    Rxns_not_Tracked = []
+    file1 = open(nRxn_file,'r')
+    lineNum = 0
+    check = True
+    while check:
+        lineNum +=1
+        line = file1.readline() #read through each line in file starting at line 1
+        a = line.split()
+        # print(a[0])
+        if ((len(a)==7) and (a[0]=='3')):
+            # print(a[1])
+            Z,N,tmp0,tmp1 = translators.MT(int(a[1]),Z,N)
+            nRxnType.append(tmp0)
+            Rxns_not_Tracked.append(tmp1)
+            # print(nRxnType,Z,N)
+            nRxnProg.append(NuclideIdentifier(Z,N))
+        elif ('1  099999' in line):
+            check =False
+            break
+    return(nRxnType,nRxnProg,Rxns_not_Tracked)
 
 ################################################################################
 ##              START MAIN                                                    ##
@@ -320,19 +335,15 @@ def NeutronRxn_MATID(MatID_file):
 
 #### Check if Isotope List for decay daughter product ID needs to be built.
 if not os.path.isfile('IsotopeID.txt'): # if the isotopeID list does not exist, create it
-    # build_flag_dec = False
     IsotopeID = open('IsotopeID.txt','w')
     IsotopeID.write('ID \t\t Z, N, \n')
     print('\nBuilding decay sublibrary isotope List.')#Once finished, please re-exeute script and decay library will be built.\n')
     for endf in dec_List:
         dZAID,dID,Z,N = Get_Info(dec_path+'/'+endf)
         IsotopeID.write(str(dID)+'\t\t'+str(Z)+' '+str(N)+' \n')
-# else:
-#     build_flag_dec = True
 
 #### Check if MatID List for neutron RXN needs to be built.
 if not os.path.isfile('nRxnMATlist.txt'):
-    # build_flag_nRxn = False
     nRxnMATID = open('nRxnMATlist.txt','w')
     nRxnMATID.write('MAT ID\n')
     print('\nBuidling neutron reaction sublibrary MAT ID list.\n')
@@ -340,8 +351,6 @@ if not os.path.isfile('nRxnMATlist.txt'):
     MatID = NeutronRxn_MATID(MatID_file)
     for elem in MatID:
         nRxnMATID.write(str(elem)+'\n')
-# else:
-#     build_flag_nRxn = True
 
 SFyields = os.listdir('../ENDF7.1/SubLib_SFyields/sfy') #gets list of files with Spontaneous fission yields
 
@@ -353,7 +362,6 @@ Lib = ET.ElementTree(root)
 
 #### START LOOPING THROUGH ENDF FILES
 dec_count = 0 # start counter for number of files program runs through
-# for decay_filename, nRxn_filename in zip(os.listdir(dec_path),os.listdir(nRxn_path)): # runs through both of the decay and neutron reaction sublibraries.
 
 
 dCnt = 0; nCnt=0
@@ -362,8 +370,8 @@ while dCnt < len(dec_List):
     print(decay_filename)
     dec_count +=1
 
-    if (decay_filename == 'dec-002_He_003.endf'):
-        break
+    # if (decay_filename == 'dec-002_He_003.endf'):
+    #     break
 
     # decay_file = 'dec-005_B_012.endf'; count = 0
 
@@ -373,13 +381,9 @@ while dCnt < len(dec_List):
         decay_file = dec_path+'/'+decay_filename
 
     ## RADIOACTIVE DECAY INFORMATION.
-    # if build_flag_dec == False:
-    #      pass
-    # elif build_flag_dec == True:
-    # print(decay_filename)
     dZAID,dID,Z,N = Get_Info(decay_file)
-    # print('dZAID = '+str(dZAID)+'\ndID = '+str(dID)+'\nZ = '+str(Z)+'; N = '+str(N))
     Half_Life, Mode, Q, BR, nu = Get_DecayInfo(dec_count,decay_file)
+    # print(Mode)
     NumOfModes, TranslatedMode = TranslateDecayMode(Mode)
     Daughters = ID_DaughterProducts(Mode,Z,N,SFyields,decay_file)
 
@@ -402,10 +406,23 @@ while dCnt < len(dec_List):
         ## NEUTRON REACTION INFORMATION.
         nRxn_file = nRxn_path+'/'+nRxn_filename
         nrZAID,nrID,Z,N = Get_Info(nRxn_file)
-
         if (str(nrID) == str(dID)):
             print('  Match! \t  '+str(nRxn_filename)+'   adding Neutron Reactions')
+
+            nRxnType, nRxnProg, Rxns_not_Tracked = Get_nRxn(nRxn_file,Z,N)
+            # print('Neutron Reaction Type(s) -> '+str(nRxnType))
+            # print('Neutron Reaction Daughter(s) -> '+str(nRxnProg))
+            ######    PRINT ISOTOPE INFO   #########
+            ## NEUTRON REACTION INFORMATION.
             SubLib_nRxn = ET.SubElement(isotope, "Neutron_Reaction")
+            nRxnMode = ET.SubElement(SubLib_nRxn, "type")
+            nRxnMode.text = str(nRxnMode)
+            nRxnDau = ET.SubElement(SubLib_nRxn, "daughters")
+            nRxnDau.text = str(nRxnProg)
+            nRxnNT = ET.SubElement(SubLib_nRxn, "untracked_reactions")
+            nRxnNT.text = str(Rxns_not_Tracked)
+            ## END NEUTRON REACTION INFO
+
             nCnt += 1
         else:
             break

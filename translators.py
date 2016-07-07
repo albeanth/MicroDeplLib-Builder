@@ -1,33 +1,35 @@
-def Progeny(flag, Z, N):
+def Progeny(flag, Z, N): ## Decay mode interpreter - direct from ENDF7.1 manual. Entries 8 and 9 are left out in manual
     operation = {
-        0: (0,0),   # gamma
-        1: (1,-1),  # beta-
-        2: (-1,1),  # e.c./beta+
-        3: (0,0),   # I.T.
-        4: (-2,-2), # alpha
-        5: (0,-1),  # neutron emission
-        6: '   SF functionality not available', # Spontaneous fission
-        7: (-1,0),  #proton emission
-        10: (0,0)   # unknown
+        0: (0, 0, 'gamma'),
+        1: (1, -1, 'beta-'),
+        2: (-1, 1, 'e.c./beta+'),
+        3: (0, 0, 'I.T.'),
+        4: (-2, -2, 'alpha'),
+        5: (0, -1, 'neutron emission'),
+        6: ('   SF functionality not available', 'Spontaneous fission'),
+        7: (-1,0, 'proton emission'),
+        10: (0,0, 'unknown'),
     }
     if flag == 6:
-        print(operation[flag])
+        print(operation[flag][0])
+        name = operation[flag][1]
     else:
         Z += operation[flag][0]
         N += operation[flag][1]
+        name = operation[flag][2]
 
-    return (Z, N)
+    return (name, Z, N)
 
 
 def MT(flag, Z, N):
-    tmp1 = None
+    tmp1 = '--'
     operation = {
         16: (0,-1,'(n,2n)'),
         17: (0,-2,'(n,3n)'),
         18: ('   fission - functionality not available', '(n,f)'),
         37: (0,-3,'(n,4n)'),
         102: (0, 1,'(n,gamma)'),
-        103: (1, -1,'(n,p)'),
+        103: (-1, 1,'(n,p)'),
         104: (-1, 0,'(n,d)'),
         105: (-1, -1,'(n,t)'),
         106: (-2, 0,'(n,He-3)'),
@@ -37,7 +39,8 @@ def MT(flag, Z, N):
     }
     MTlist = operation.keys()
     if flag not in MTlist:
-        tmp0 = 'Reaction ' +str(flag)+' not_tracked'; tmp1 = flag
+        # tmp0 = 'Reaction ' +str(flag)+' not tracked'; tmp1 = flag
+        tmp0 = 'N/A'; tmp1 = flag
     elif flag == 18:
         print(operation[flag][0])
         tmp0 = operation[flag][1]

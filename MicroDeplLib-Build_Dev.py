@@ -166,7 +166,6 @@ def Get_DecayInfo(count, current_file): #get Half_Life, Decay mode(s), Q value(s
 
                     i += 1
                 break
-        # elif '8  099999' in line:
     return(Half_Life, Mode, Q, BR, nu)
 
 def TranslateDecayMode(Mode,Z,N,SFyields,current_file): #translate RTYP numbers to readable decay types
@@ -234,6 +233,7 @@ def TranslateDecayMode(Mode,Z,N,SFyields,current_file): #translate RTYP numbers 
                 ProgNameT = str(ProgNameS)+str(ProgNameL)
             else:
                 DecNameT,Ztmp,Ntmp = translators.Progeny(int(elem),Ztmp,Ntmp)
+                # print(DecNameT,Ztmp,Ntmp)
                 ProgNameT = NuclideIdentifier(Ztmp,Ntmp)
             TranslatedMode.append(DecNameT)
             Daughters.append(ProgNameT)
@@ -242,36 +242,36 @@ def TranslateDecayMode(Mode,Z,N,SFyields,current_file): #translate RTYP numbers 
 ## NEUTRON REACTION SPECIFIC FUNCTIONS
 def NeutronRxn_MATID(MatID_file): # obtains MAT ID values for neutron reaction sublibrary
     ID = []
-    file1 = open(MatID_file,'r')
-    for line in file1:
-        if ')' in line:
-            a = line.split()
-            if len(a[-1]) > 4:
-                ID.append(a[-1][-4:])
-            else:
-                ID.append(a[-1])
+    with open(MatID_file,'r') as file1:
+        for line in file1:
+            if ')' in line:
+                a = line.split()
+                if len(a[-1]) > 4:
+                    ID.append(a[-1][-4:])
+                else:
+                    ID.append(a[-1])
     return(ID)
 
 def Get_nRxn(nRxn_file,Z,N):
     nRxnType = []
     nRxnProg = []
     Rxns_not_Tracked = []
-    file1 = open(nRxn_file,'r')
-    tmp = linecache.getline(nRxn_file,5,None) #pulls line 2 from current_file into cache
-    a = tmp.split()
-    skip = a[4] # grabs the number of records of descriptive text (NWD in ENDF7.1 manual)
-    for i in range(int(skip)+5): #skip over the descriptive records...
-        file1.__next__()
-    for line in file1: # ...and go straight to the (MF, MT, NC, MOD) descriptive lines
-        a = line.split()
-        if (a[0]=='3'): # ID's which neutron reactions are tabulated.
-            Ztmp,Ntmp,tmp0,tmp1 = translators.MT(int(a[1]),Z,N) # using base Z & N values of isotope, get new Z & N for isotope post neutron reaction
-            nRxnType.append(tmp0) # append reaction type
-            Rxns_not_Tracked.append(tmp1) # append which reactions are tabulated but not tracked
-            nRxnProg.append(NuclideIdentifier(Ztmp,Ntmp)) # append which isotopes correspond to the new Z & N values
-        elif ('1  099999' in line): # if you hit the end of the (MF, MT, NC, MOD) records, quit out of function and move onto next nuclide file
-            linecache.clearcache()
-            return(nRxnType,nRxnProg,Rxns_not_Tracked)
+    with open(nRxn_file,'r') as file1:
+        tmp = linecache.getline(nRxn_file,5,None) #pulls line 2 from current_file into cache
+        a = tmp.split()
+        skip = a[4] # grabs the number of records of descriptive text (NWD in ENDF7.1 manual)
+        for i in range(int(skip)+5): #skip over the descriptive records...
+            file1.__next__()
+        for line in file1: # ...and go straight to the (MF, MT, NC, MOD) descriptive lines
+            a = line.split()
+            if (a[0]=='3'): # ID's which neutron reactions are tabulated.
+                Ztmp,Ntmp,tmp0,tmp1 = translators.MT(int(a[1]),Z,N) # using base Z & N values of isotope, get new Z & N for isotope post neutron reaction
+                nRxnType.append(tmp0) # append reaction type
+                Rxns_not_Tracked.append(tmp1) # append which reactions are tabulated but not tracked
+                nRxnProg.append(NuclideIdentifier(Ztmp,Ntmp)) # append which isotopes correspond to the new Z & N values
+            elif ('1  099999' in line): # if you hit the end of the (MF, MT, NC, MOD) records, quit out of function and move onto next nuclide file
+                linecache.clearcache()
+                return(nRxnType,nRxnProg,Rxns_not_Tracked)
 
 ################################################################################
 ##              START MAIN                                                    ##
@@ -285,6 +285,7 @@ if not os.path.isfile('IsotopeID.txt'): # if the isotopeID list does not exist, 
     for endf in dec_List:
         dZAID,dID,Z,N = Get_Info(dec_path+'/'+endf)
         IsotopeID.write(str(dID)+'\t\t'+str(Z)+' '+str(N)+' \n')
+    IsotopeID.close()
 
 #### Check if MatID List for neutron RXN needs to be built.
 if not os.path.isfile('nRxnMATlist.txt'):
@@ -295,6 +296,7 @@ if not os.path.isfile('nRxnMATlist.txt'):
     MatID = NeutronRxn_MATID(MatID_file)
     for elem in MatID:
         nRxnMATID.write(str(elem)+'\n')
+    nRxnMATID.close()
 
 SFyields = os.listdir('../ENDF7.1/SubLib_SFyields/sfy') #gets list of files with Spontaneous fission yields
 

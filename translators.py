@@ -1,6 +1,9 @@
 import sys,os
 import linecache
 import re
+from colorama import Fore, Back, Style
+from colorama import init
+init(autoreset=True)
 
 def DecProgeny(flag, Z, N,decay_filename): ## Decay mode interpreter - direct from ENDF7.1 manual. Entries 8 and 9 are left out in manual
     FissP_Yield = None
@@ -23,11 +26,10 @@ def DecProgeny(flag, Z, N,decay_filename): ## Decay mode interpreter - direct fr
         sf_file = sf_path+'/'+sf_filename
         sf_List = os.listdir(sf_path)
         if sf_filename not in sf_List:
-            print('    No SF data available!')
+            print(Fore.YELLOW+'No SF data available for '+str(sf_filename))
             ProgName = {'Unknown': 'No ENDF distribution given.'}
             FissP_Yield = {'Unknown': 'No ENDF distribution given.'}
         else:
-            print('    Adding SF data!')
             FissP_ID = {}; FissP_Yield = {}
             with open(sf_file,'r') as file1:
                 tmp = linecache.getline(sf_file,5,None)
@@ -37,20 +39,23 @@ def DecProgeny(flag, Z, N,decay_filename): ## Decay mode interpreter - direct fr
                 a = tmp.split()
                 skip1 = a[2] # gets number of lines for MT=454 or 459
 
-                for i in range(5+int(skip0)+5): # puts user on line2 of MT=454
+                for i in range(5+int(skip0)+5): # puts user on line1 of MT=454
                     file1.__next__()
 
                 if whichLib == 459:
                     for i in range(int(skip1)+1): # puts user on line1 of MT=459
                         file1.__next__()
-                    ProgName, FissP_Yield = Get_FissionProg(file1,FissP_ID,FissP_Yield) # Z and N correspond to FissP_ID,FissP_Yield respectively!!!
-                    ProgName = ProgName['0.000000+0']
-                    FissP_Yield = FissP_Yield['0.000000+0']
+                    ProgName, FissP_Yield = Get_FissionProg(file1,FissP_ID,FissP_Yield)
 
                 elif whichLib == 454:
-                    ProgName, FissP_Yield = Get_FissionProg(file1,FissP_ID,FissP_Yield) # Z and N correspond to FissP_ID,FissP_Yield respectively!!!
-                    ProgName = ProgName['0.000000+0']
-                    FissP_Yield = FissP_Yield['0.000000+0']
+                    ProgName, FissP_Yield = Get_FissionProg(file1,FissP_ID,FissP_Yield)
+
+                else:
+                    print('\n I don\'t know what library you want, please check "whichLib". Quitting.\n')
+                    sys.exit()
+
+                ProgName = ProgName['0.000000+0'] #SF data has a "incident" energy of 0. No need to keep key from dictionary. Just pull value.
+                FissP_Yield = FissP_Yield['0.000000+0']
 
     else:
         Ztmp = Z; Ntmp = N
@@ -61,8 +66,12 @@ def DecProgeny(flag, Z, N,decay_filename): ## Decay mode interpreter - direct fr
 
     return (DecName, ProgName, FissP_Yield)
 
-def MT(flag, Z, N):
-    noTrack = ' '
+def MT(flag, Z, N): # ID's neutron reaction types (except fission) and gets daughter products
+
+    ## TO ADD REACTIONS TO BE TRACKED, ADD REACTION TYPE WITH FOLLOWING FORMAT (Z ADJUST ,N ADJUST, ID OF REACTION)
+    ## TO REMOVE REACTIONS TO BE TRACKED, JUST COMMENT OUT OR DELETE DICTIONARY ENTRY IN "operation = {}"
+
+    noTrack = ' ' # initialize storing of types that are not being tracked.
     operation = {
         16: (0,-1,'n_2n'),
         17: (0,-2,'n_3n'),
@@ -80,8 +89,6 @@ def MT(flag, Z, N):
     if flag not in MTlist:
         RxnType = ' '; noTrack = flag
     elif flag == 18:
-
-        print(operation[flag][0])
         RxnType = operation[flag][1]
     else:
         Z += operation[flag][0]
@@ -90,7 +97,7 @@ def MT(flag, Z, N):
 
     return (Z, N, RxnType, noTrack)
 
-def MT_fission(flag,nFission_filename):
+def MT_fission(flag,nFission_filename): #this ID's fission types, progeny, and yield information for a fissionable isotope
     progeny = []
     CumulYield = []
     ProgList=[]
@@ -104,10 +111,11 @@ def MT_fission(flag,nFission_filename):
     nFission_Path = '../ENDF7.1/SubLib_nfYields/nfy'
     nFissionFile = nFission_Path+'/'+nFission_filename
     nFission_List = os.listdir(nFission_Path)
-    if nFission_filename not in nFission_List:
+    if nFission_filename not in nFission_List: # not all fissionable isotopes have yield information.
+        print(Fore.YELLOW+'No (n,f) data available for '+str(nFission_filename))
         fissType = flag
-        FissP_ID = {'Unknown': 'Unknown. No ENDF distribution given.'}
-        FissP_Yield = {'Unknown': 'Unknown. No ENDF distribution given.'}
+        FissP_ID = {'Unknown': 'No ENDF distribution given.'}
+        FissP_Yield = {'Unknown': 'No ENDF distribution given.'}
     else:
         fissType = operation[flag]
         whichLib = 454 # make either 454 or 459 for independent yield or cumulative yield, respectively.
@@ -121,7 +129,7 @@ def MT_fission(flag,nFission_filename):
             a = tmp.split()
             skip1 = a[2] # gets number of lines for MT=454 or 459
 
-            for i in range(5+int(skip0)+5): # puts user on line2 of MT=454
+            for i in range(5+int(skip0)+5): # puts user on line1 of MT=454
                 file1.__next__()
 
             if whichLib == 459:
@@ -132,48 +140,49 @@ def MT_fission(flag,nFission_filename):
             elif whichLib == 454:
                 FissP_ID,FissP_Yield = Get_FissionProg(file1,FissP_ID,FissP_Yield)
 
+            else:
+                print(Fore.RED+'\n I don\'t know what library you want, please check "whichLib". Quitting.\n')
+                sys.exit()
+
     return (fissType, FissP_ID, FissP_Yield)
 
-def Get_FissionProg(file1,FissP_ID,FissP_Yield):
-    line = file1.readline() # read line 1 and grab number of yield sets
+def Get_FissionProg(file1,FissP_ID,FissP_Yield): # takes either spontaneous fission or neutron induced fission and ID's fission products and their yields
+    line = file1.readline() # read line 1 of MT=454/459
     a = line.split()
-    NumEnergySets = a[2]
-    line = file1.readline() # read line 2...
-
-    EScount = 0
+    NumEnergySets = a[2] # ID how many energy dependent fission product yields are given -- "LE" in ENDF7.1 manual, Ch.8
+    line = file1.readline() # read line 2 of MT=454/459
+    EScount = 0 # energy set counter
     while EScount<int(NumEnergySets):
-        ProgList = []
+        ProgList = [] # re-initialize progeny list for each energy set
         a = line.split()
-        Energy = a[0] # ... and grab incident energy...
+        Energy = a[0] # grab incident energy...
         length = a[4] # ... and number of expected entries.
-        for line in file1: # start looping over incident energy yield data. should produce ProgList of length == "length = a[4]"
+        for line in file1: # start looping over incident energy yield data set.
             if len(ProgList) >= int(length):
                 break
             tmp = line.split() # ['2.406600+4', '0.000000+0', '0.000000+0', '0.000000+0', '2.406700+4', '0.000000+09025',  '8454', '3']
-            tmp1=tmp
             tmp = tmp[:-2]     # ['2.406600+4', '0.000000+0', '0.000000+0', '0.000000+0', '2.406700+4', '0.000000+09025']
-            if len(tmp) < 6:
+            if len(tmp) < 6: # can be at the end of energy set if list formatting ends before line ends
                 del tmp[-1]
             else:
                 tmp.append(tmp[-1][:-4]) # ['2.406600+4', '0.000000+0', '0.000000+0', '0.000000+0', '2.406700+4', '0.000000+09025', '0.000000+0']
                 del tmp[5]        # ['2.406600+4', '0.000000+0', '0.000000+0', '0.000000+0', '2.406700+4', '0.000000+0']
             ProgList.extend(tmp)
 
-        # Progeny[Energy] = ProgList
-
-        linecache.clearcache()
-
-        ID = []
-        Yield = []
+        ID = []; Yield = []; StDes = []
         i=0; j=1; k=2 # i = index for nuclide identifier; j = index for state designator; k = index for cumulative yield of isotope i
         while(i<len(ProgList)):
-            pdDm = ProgList[i]
-            # print(pdDm)
-            ID.append(NuclideIdentifier_fission(pdDm))
-            sdDum = ProgList[j]
+            pdDm = ProgList[i] # ZAFP of fission product
+            sdDum = ProgList[j] #state designator
+            tmp2 = NuclideIdentifier_fission(pdDm)
+            if sdDum != '0.000000+0': #metastable state.
+                tmp2 = str(tmp2)+'m'
+            else:
+                pass
+            ID.append(tmp2)
             cyDum = ProgList[k]
             Yield.append(ScientificNotation(cyDum))
-            i+=4; j+=4; k+=4
+            i+=4; j+=4; k+=4 # see C_n(E_i) in Ch8 of ENDF7.1 manual for description
 
         FissP_ID[Energy] = ID
         FissP_Yield[Energy] = Yield
@@ -182,8 +191,7 @@ def Get_FissionProg(file1,FissP_ID,FissP_Yield):
 
     return(FissP_ID,FissP_Yield)
 
-def NuclideIdentifier_fission(ZAFP):
-    # print(ZAFP)
+def NuclideIdentifier_fission(ZAFP): # takes ZAFP value from fission product ID (MT=454/459) and identifies the daughter product explicitely.
     with open('IsotopeID.txt','r') as IsotopeList:
         for line in IsotopeList:
             a = line.split()
@@ -193,29 +201,28 @@ def NuclideIdentifier_fission(ZAFP):
                 break
             else:
                 name = str(ZAFP)
+                ## uncomment code below and comment single line about to print unknown fission products in standard ZAID form
                 # ZA = re.split("([\+\-])", ZAFP) #splits ZA into 3 components
                 # ZA.insert(1, "E") #inserts the E needed for scientific notation
                 # ZA = "".join(ZA[0:]) #rejoins array of strings into single string
                 # name = int(float(ZA)*10.0)
     return(name)# once the daughter is found, break out or else it will cycle through the entire file every single time is searches
 
-
-
-def NuclideIdentifier(Z,N):
+def NuclideIdentifier(Z,N): # takes adjust Z & N values from decay type and identifies the daughter product explicitely.
     with open('IsotopeID.txt','r') as IsotopeList:
         for line in IsotopeList:
             a = line.split()
             if ((str(Z)==a[1]) and (str(N)==a[2])):
                 name=a[0]
-                break # once the daughter is found, break out or else it will cycle through the entire file every single time is searches
+                break # once the daughter is found, break out or else it will cycle through the entire file every single time is searches and waste time
             elif (((Z==3) and (N==5)) or ((Z==3) and (N==6))): #if Li-8 or Li-9 (wrong file format, ticket submitted)
                 name = 'N/A'
     return(name)
 
 def ScientificNotation(tmp): # convert ENDF "1.00000+2" to "1.00000E+2"
     if (('+' in tmp) or ('-' in tmp)):
-        tmp = re.split("([\+\-])", tmp) #splits ModeTmp into 3 components
-        tmp.insert(1, "E") #inserts the E needed for scientific notation
+        tmp = re.split("([\+\-])", tmp) #splits tmp into 3 components
+        tmp.insert(1, "E") #inserts the "E" needed for scientific notation
         tmp = "".join(tmp[0:]) #rejoins array of strings into single string
     else:
         pass

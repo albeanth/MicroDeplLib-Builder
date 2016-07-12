@@ -2,31 +2,67 @@ import sys,os
 import linecache
 import re
 
-def Progeny(flag, Z, N): ## Decay mode interpreter - direct from ENDF7.1 manual. Entries 8 and 9 are left out in manual
+def DecProgeny(flag, Z, N,decay_filename): ## Decay mode interpreter - direct from ENDF7.1 manual. Entries 8 and 9 are left out in manual
+    FissP_Yield = None
     operation = {
         0: (0, 0, 'gamma'),
-        1: (1, -1, 'beta-'),
-        2: (-1, 1, 'e.c./beta+'),
+        1: (1, -1, 'beta_m'),
+        2: (-1, 1, 'e.c./beta_p'),
         3: (0, 0, 'I.T.'),
         4: (-2, -2, 'alpha'),
-        5: (0, -1, 'neutron emission'),
-        6: ('   SF functionality not available', 'Spontaneous fission'),
-        7: (-1,0, 'proton emission'),
+        5: (0, -1, 'neutron_emission'),
+        6: ('spontaneous_fission'),
+        7: (-1,0, 'proton_emission'),
         10: (0,0, 'unknown'),
     }
     if flag == 6:
-        print(operation[flag][0])
-        name = operation[flag][1]
+        whichLib = 454
+        DecName = operation[flag]
+        sf_filename = decay_filename.replace('dec-','sfy-')
+        sf_path = '../ENDF7.1/SubLib_SFyields/sfy/'
+        sf_file = sf_path+'/'+sf_filename
+        sf_List = os.listdir(sf_path)
+        if sf_filename not in sf_List:
+            print('    No SF data available!')
+            ProgName = {'Unknown': 'No ENDF distribution given.'}
+            FissP_Yield = {'Unknown': 'No ENDF distribution given.'}
+        else:
+            print('    Adding SF data!')
+            FissP_ID = {}; FissP_Yield = {}
+            with open(sf_file,'r') as file1:
+                tmp = linecache.getline(sf_file,5,None)
+                a = tmp.split()
+                skip0 = a[4] #gets number of lines to skip to gloss over "descriptive text"
+                tmp = linecache.getline(sf_file,(5+int(skip0)+2),None)
+                a = tmp.split()
+                skip1 = a[2] # gets number of lines for MT=454 or 459
+
+                for i in range(5+int(skip0)+5): # puts user on line2 of MT=454
+                    file1.__next__()
+
+                if whichLib == 459:
+                    for i in range(int(skip1)+1): # puts user on line1 of MT=459
+                        file1.__next__()
+                    ProgName, FissP_Yield = Get_FissionProg(file1,FissP_ID,FissP_Yield) # Z and N correspond to FissP_ID,FissP_Yield respectively!!!
+                    ProgName = ProgName['0.000000+0']
+                    FissP_Yield = FissP_Yield['0.000000+0']
+
+                elif whichLib == 454:
+                    ProgName, FissP_Yield = Get_FissionProg(file1,FissP_ID,FissP_Yield) # Z and N correspond to FissP_ID,FissP_Yield respectively!!!
+                    ProgName = ProgName['0.000000+0']
+                    FissP_Yield = FissP_Yield['0.000000+0']
+
     else:
-        Z += operation[flag][0]
-        N += operation[flag][1]
-        name = operation[flag][2]
+        Ztmp = Z; Ntmp = N
+        Ztmp += operation[flag][0]
+        Ntmp += operation[flag][1]
+        DecName = operation[flag][2].strip('')
+        ProgName = NuclideIdentifier(Z,N)
 
-    return (name, Z, N)
-
+    return (DecName, ProgName, FissP_Yield)
 
 def MT(flag, Z, N):
-    tmp1 = ' '
+    noTrack = ' '
     operation = {
         16: (0,-1,'n_2n'),
         17: (0,-2,'n_3n'),
@@ -42,18 +78,17 @@ def MT(flag, Z, N):
     }
     MTlist = operation.keys()
     if flag not in MTlist:
-        # tmp0 = 'Reaction ' +str(flag)+' not tracked'; tmp1 = flag
-        tmp0 = ' '; tmp1 = flag
+        RxnType = ' '; noTrack = flag
     elif flag == 18:
 
         print(operation[flag][0])
-        tmp0 = operation[flag][1]
+        RxnType = operation[flag][1]
     else:
         Z += operation[flag][0]
         N += operation[flag][1]
-        tmp0 = operation[flag][2]
+        RxnType = operation[flag][2].strip('')
 
-    return (Z, N, tmp0, tmp1)
+    return (Z, N, RxnType, noTrack)
 
 def MT_fission(flag,nFission_filename):
     progeny = []

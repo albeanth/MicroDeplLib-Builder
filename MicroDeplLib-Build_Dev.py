@@ -238,7 +238,7 @@ def Get_nRxn(nRxn_file,Z,N,nFission_filename): # this goes through each neutron 
 if not os.path.isfile('IsotopeID.txt'): # if the isotopeID list does not exist, create it
     IsotopeID = open('IsotopeID.txt','w')
     IsotopeID.write('ID \t\tZ   N   ZA\n')
-    print('\nBuilding isotope List from decay sublibrary.')#Once finished, please re-exeute script and decay library will be built.\n')
+    print(Fore.GREEN + '\nBuilding isotope List from decay sublibrary.')#Once finished, please re-exeute script and decay library will be built.\n')
     for endf in dec_List:
         ZAtmp, dZAID,dID,Z,N = Get_Info(dec_path+'/'+endf)
         IsotopeID.write(str(dID)+'\t\t'+str(Z)+'   '+str(N)+'   '+str(ZAtmp)+'\n')
@@ -330,7 +330,7 @@ while dCnt < len(dec_List):
 Lib.write(file1, encoding='unicode')
 file1.close
 
-print(Fore.GREEN+'\n\nDone building library.')
+print(Fore.GREEN+'\nDone building library.\n')
 
 ### temp workaround for parsing.
 # os.system('xmllint --format DecayData.xml > DecayData_tmp.xml')
@@ -341,8 +341,8 @@ print(Fore.GREEN+'\n\nDone building library.')
 
 #### The code below works on simple toy problems but not here.... so use workaround system commands above.
 ## use xml.dom.minidom and parse out previously created xml file.
-xml = minidom.parse('DecayData.xml')
-pretty_xml_as_string = xml.toprettyxml()
-file2 = open('DecayData.xml', 'w', encoding = 'utf-8')
-file2.write(pretty_xml_as_string)
-file2.close()
+# xml = minidom.parse('DepletionData.xml')
+# pretty_xml_as_string = xml.toprettyxml()
+# file2 = open('DepletionData.xml', 'w', encoding = 'utf-8')
+# file2.write(pretty_xml_as_string)
+# file2.close()

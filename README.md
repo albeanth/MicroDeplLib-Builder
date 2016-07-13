@@ -28,8 +28,10 @@ The python script will take on the order of 5 minutes to run (machine dependent)
 #### Known Issues
 *1. Spontaneous Fission* 
 There are more isotopes in the decay sublibrary that identify as capable of undergoing spontaneous fission  (SF) as there are in the SF sublibrary. This leads to several isotopes having unknown SF yields.
+
 *2. Neutron Induced Fission*
 As in the SF case, there are more isotopes in the neutron reaction sublibrary that identify as fissionable than there are in the neutron induced fission product yield library. This leads to several isotopes having unknown neutron induced fission yields. 
+
 *3. Decay Data*
 There are 9 cases in which isotopes decay to unknown products. These cases are hard coded in the **TranslateDecayMode** function in MicroDeplLib-Build.py. 
 

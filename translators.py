@@ -15,8 +15,8 @@ def DecProgeny(flag, Z, N,decay_filename): ## Decay mode interpreter - direct fr
         4: (-2, -2, 'alpha'),
         5: (0, -1, 'neutron_emission'),
         6: ('spontaneous_fission'),
-        7: (-1,0, 'proton_emission'),
-        10: (0,0, 'unknown'),
+        7: (-1, 0, 'proton_emission'),
+        10: (0, 0, 'unknown'),
     }
     if flag == 6:
         whichLib = 454
@@ -58,13 +58,11 @@ def DecProgeny(flag, Z, N,decay_filename): ## Decay mode interpreter - direct fr
                 FissP_Yield = FissP_Yield['0.000000+0']
 
     else:
-        Ztmp = Z; Ntmp = N
-        Ztmp += operation[flag][0]
-        Ntmp += operation[flag][1]
+        Z += operation[flag][0]
+        N += operation[flag][1]
         DecName = operation[flag][2].strip('')
         ProgName = NuclideIdentifier(Z,N)
-
-    return (DecName, ProgName, FissP_Yield)
+    return (DecName, ProgName, FissP_Yield, Z, N)
 
 def MT(flag, Z, N): # ID's neutron reaction types (except fission) and gets daughter products
 

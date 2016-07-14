@@ -140,6 +140,7 @@ def TranslateDecayMode(Mode,Z,N,current_file,decay_filename): #translate RTYP nu
         Daughters = {}
         sfYield = []
         for idy,elem in enumerate(Mode):
+            Ztmp = Z; Ntmp = N
             # not all decay types for all isotopes lead to actual results. the following if...elif... statements ID which ones are issues.
             if ((current_file == '../ENDF7.1/SubLib_Decay/decay/dec-028_Ni_048.endf') and (elem == 2.0)):
                 print(Fore.YELLOW+'  No data for Ni-48 beta+ decay. Need data for Co-48. Passing...')
@@ -186,13 +187,13 @@ def TranslateDecayMode(Mode,Z,N,current_file,decay_filename): #translate RTYP nu
                         DecNameL = np.chararray(len(elem1),16,True)
                         ProgNameL = np.chararray(len(elem1),16,True)
                         for idx2,elem2 in enumerate(elem1): # for each term, '5','3','4'
-                            DecNameL[idx2],ProgNameL[idx2],dummy = trls.DecProgeny(int(elem2),Z,N,decay_filename)
+                            DecNameL[idx2],ProgNameL[idx2],dummy, Ztmp, Ntmp = trls.DecProgeny(int(elem2),Ztmp,Ntmp,decay_filename)
                     else:
-                        DecNameS,ProgNameS,dummy = trls.DecProgeny(int(elem1),Z,N,decay_filename)
+                        DecNameS,ProgNameS,dummy, Ztmp, Ntmp = trls.DecProgeny(int(elem1),Ztmp,Ntmp,decay_filename)
                 DecNameT = str(DecNameS)+str(DecNameL) # 'S' -> short (1.) 'L' -> Long (.534) therefore, 'T' -> total (1.534)
                 ProgNameT = str(ProgNameS)+str(ProgNameL)
             else:
-                DecNameT,ProgNameT,dummy = trls.DecProgeny(int(elem),Z,N,decay_filename)
+                DecNameT,ProgNameT,dummy, Ztmp, Ntmp = trls.DecProgeny(int(elem),Ztmp,Ntmp,decay_filename)
             Daughters[DecNameT] = ProgNameT
             sfYield = dummy
     return(NumOfModes, Daughters, sfYield)
@@ -263,7 +264,7 @@ while dCnt < len(dec_List):
     print(Style.DIM + decay_filename+'   #'+str(dCnt))
 
     if ((decay_filename == 'dec-003_Li_008.endf') or (decay_filename == 'dec-003_Li_009.endf')):
-        pass
+        continue
     else:
         decay_file = dec_path+'/'+decay_filename
 

@@ -13,15 +13,11 @@ import xml.dom.minidom as minidom
 # accompanying python file for required functions
 import translators as trls
 
-## SET PATHS OF SUBLIBRARIES
-dec_path = '../ENDF7.1/SubLib_Decay/decay' # set path to point to ENDF7.1 files
-nRxn_path = '../ENDF7.1/SubLib_NeutronRxn/neutrons' # set path to point to ENDF7.1 files
-# be sure to adjust path for neutron induced fission in MT_fission() in translators.py
-
-## DEFINE CONSTANTS
-mass_n = 1.00866491578 # mass of nuetron in amu. Source - ENDF7.1 manual
-dec_List = os.listdir(dec_path) # get list of isotope files in decay sublibrary
-nRxn_List = os.listdir(nRxn_path) # get list of isotope files in neutron reactions
+import zipfile
+try:
+    from urllib.request import urlopen
+except ImportError:
+    from urllib2 import urlopen
 
 ## GENERAL PURPOSE FUCNTIONS
 def Get_Info(current_file): #get ZAID and isotope ID
@@ -142,39 +138,39 @@ def TranslateDecayMode(Mode,Z,N,current_file,decay_filename): #translate RTYP nu
         for idy,elem in enumerate(Mode):
             Ztmp = Z; Ntmp = N
             # not all decay types for all isotopes lead to actual results. the following if...elif... statements ID which ones are issues.
-            if ((current_file == '../ENDF7.1/SubLib_Decay/decay/dec-028_Ni_048.endf') and (elem == 2.0)):
+            if ((current_file == './ENDF7.1/decay/dec-028_Ni_048.endf') and (elem == 2.0)):
                 print(Fore.YELLOW+'  No data for Ni-48 beta+ decay. Need data for Co-48. Passing...')
                 tmp = 'N/A'
                 continue
-            elif ((current_file == '../ENDF7.1/SubLib_Decay/decay/dec-028_Ni_048.endf') and (elem == 7.7)):
+            elif ((current_file == './ENDF7.1/decay/dec-028_Ni_048.endf') and (elem == 7.7)):
                 print(Fore.YELLOW+'  No data for proton-proton decay. Need data for Co-47. Passing...')
                 tmp = 'N/A'
                 continue
-            elif ((current_file == '../ENDF7.1/SubLib_Decay/decay/dec-098_Cf_239.endf') and (elem == 2.0)):
+            elif ((current_file == './ENDF7.1/decay/dec-098_Cf_239.endf') and (elem == 2.0)):
                 print(Fore.YELLOW+'  No data for Bk-239 from Cf-239 beta+ decay. Passing...')
                 tmp = 'N/A'
                 continue
-            elif ((current_file == '../ENDF7.1/SubLib_Decay/decay/dec-098_Cf_256.endf') and (elem == 4.0)):
+            elif ((current_file == './ENDF7.1/decay/dec-098_Cf_256.endf') and (elem == 4.0)):
                 print(Fore.YELLOW+'  No data for Cf-256 alpha decay (and it\'s probability is 1E-9). Passing...')
                 tmp = 'N/A'
                 continue
-            elif ((current_file == '../ENDF7.1/SubLib_Decay/decay/dec-099_Es_240.endf') and (elem == 4.0)):
+            elif ((current_file == './ENDF7.1/decay/dec-099_Es_240.endf') and (elem == 4.0)):
                 print(Fore.YELLOW+'  No data for Es-240 alpha decay. Need data for Bk-236. Passing...')
                 tmp = 'N/A'
                 continue
-            elif ((current_file == '../ENDF7.1/SubLib_Decay/decay/dec-099_Es_243.endf') and (elem == 4.0)):
+            elif ((current_file == './ENDF7.1/decay/dec-099_Es_243.endf') and (elem == 4.0)):
                 print(Fore.YELLOW+'  No data for Es-243 alpha decay. Need data for Bk-239. Passing...')
                 tmp = 'N/A'
                 continue
-            elif ((current_file == '../ENDF7.1/SubLib_Decay/decay/dec-099_Es_258.endf') and (elem == 2.0)):
+            elif ((current_file == './ENDF7.1/decay/dec-099_Es_258.endf') and (elem == 2.0)):
                 print(Fore.YELLOW+'  No data for Es-243 Beta+ decay. Need data for Cf-258 (which doesn\'t exist?). Passing...')
                 tmp = 'N/A'
                 continue
-            elif ((current_file == '../ENDF7.1/SubLib_Decay/decay/dec-104_Rf_253.endf') and (elem == 4.0)):
+            elif ((current_file == './ENDF7.1/decay/dec-104_Rf_253.endf') and (elem == 4.0)):
                 print(Fore.YELLOW+'  No data for Rf-253 alpha decay. Need data for No-249. Passing...')
                 tmp = 'N/A'
                 continue
-            elif ((current_file == '../ENDF7.1/SubLib_Decay/decay/dec-110_Ds_279m1.endf') and (elem == 4.0)):
+            elif ((current_file == './ENDF7.1/decay/dec-110_Ds_279m1.endf') and (elem == 4.0)):
                 print(Fore.YELLOW+'  No data for Ds-279m1 alpha decay. Need data for Hs-275. Passing...')
                 tmp = 'N/A'
                 continue
@@ -235,6 +231,94 @@ def Get_nRxn(nRxn_file,Z,N,nFission_filename): # this goes through each neutron 
 ##              START MAIN                                                    ##
 ################################################################################
 
+## SET PATHS OF SUBLIBRARIES
+dec_path = './ENDF7.1/decay' # set path to point to ENDF7.1 files
+nRxn_path = './ENDF7.1/neutrons' # set path to point to ENDF7.1 files
+# be sure to adjust path for neutron induced fission in MT_fission() in translators.py
+
+## DEFINE CONSTANTS
+mass_n = 1.00866491578 # mass of nuetron in amu. Source - ENDF7.1 manual
+
+try: # if this throws an error than make the directory and create the files
+    os.listdir('./ENDF7.1')
+except FileNotFoundError:
+    os.mkdir('ENDF7.1')
+
+if len(os.listdir('./ENDF7.1')) == 0: # if the ENDF7.1 directory is empty
+    print('Obataining Needed NNDC ENDF7.1 Sublibraries')
+    cwd = os.getcwd() # return string of current working directory
+    # print(cwd)
+    sys.path.insert(0, os.path.join(cwd, '..'))
+
+    baseUrl = 'http://www.nndc.bnl.gov/endf/b7.1/zips/'
+
+    files = ['ENDF-B-VII.1-neutrons.zip',
+             'ENDF-B-VII.1-decay.zip',
+             'ENDF-B-VII.1-sfy.zip',
+             'ENDF-B-VII.1-nfy.zip']
+    block_size = 1024 # specifies the chunks in which the progress bar prints itself. can change around...
+
+    filesComplete = []
+    for f in files:
+        # Establish connection to URL
+        url = baseUrl + f
+        req = urlopen(url)
+
+        # Get file size from header
+        if sys.version_info[0] < 3: #check to see what version of python you have
+            file_size = int(req.info().getheaders('Content-Length')[0])
+        else:
+            file_size = req.length
+            # print('size = '+str(file_size))
+        downloaded = 0
+
+        # Check if file already downloaded
+        if os.path.exists(f):
+            if os.path.getsize(f) == file_size:
+                print('Skipping... Already downloaded ' + f)
+                filesComplete.append(f)
+                continue
+            else:
+                if sys.version_info[0] < 3:
+                    overwrite = raw_input('Overwrite {0}? ([y]/n) '.format(f))
+                else:
+                    overwrite = input('Overwrite {0}? ([y]/n) '.format(f))
+                if overwrite.lower().startswith('n'):
+                    continue
+
+        # Copy file to disk
+        print('Downloading {0}... '.format(f), end='')
+        with open(f, 'wb') as fh:
+            while True:
+                chunk = req.read(block_size)
+                if not chunk:
+                    break
+                fh.write(chunk)
+                downloaded += len(chunk)
+                status = '{0:10}  [{1:3.2f}%]'.format(downloaded, downloaded * 100. / file_size)
+                print(status + chr(8)*len(status), end='')
+            print('')
+            filesComplete.append(f)
+
+        if f not in filesComplete:
+            continue
+
+    for f in filesComplete:
+        print('...extracting '+str(f))
+        zip_ref = zipfile.ZipFile(str(cwd)+'/'+str(f), 'r')
+        zip_ref.extractall(path=str(cwd)+'/ENDF7.1')
+        zip_ref.close()
+        print('removing .zip file -> '+str(f))
+        os.remove(f)
+else:
+    pass
+
+try:
+    dec_List = os.listdir(dec_path) # get list of isotope files in decay sublibrary
+    nRxn_List = os.listdir(nRxn_path) # get list of isotope files in neutron reactions
+except FileNotFoundError:
+    pass
+
 #### Check if Isotope List for decay daughter product ID needs to be built.
 if not os.path.isfile('IsotopeID.txt'): # if the isotopeID list does not exist, create it
     IsotopeID = open('IsotopeID.txt','w')
@@ -245,13 +329,17 @@ if not os.path.isfile('IsotopeID.txt'): # if the isotopeID list does not exist, 
         IsotopeID.write(str(dID)+'\t\t'+str(Z)+'   '+str(N)+'   '+str(ZAtmp)+'\n')
     IsotopeID.close()
 
+
 # Set up xml output information
 XML_out = 'DepletionData.xml'
 file1 = open(XML_out, 'w', encoding = 'utf-8')
 root = ET.Element("Decay_Library", Generator = "INL", Name = "General ENDF7.1", Ver = "1.0")
 Lib = ET.ElementTree(root)
 
+
+
 #### START LOOPING THROUGH ENDF FILES
+ParamCnt = 0
 dCnt = 0; nCnt=0
 while dCnt < len(dec_List):
     decay_filename = dec_List[dCnt]
@@ -280,6 +368,7 @@ while dCnt < len(dec_List):
     else:
         SubLib_Dec = ET.SubElement(isotope, "Decay")
         for idx,pair in enumerate(sorted(Daughters.items())):
+            ParamCnt += 1
             tmpstr = 'decMode_'+str(idx)
             tmpstr = ET.SubElement(SubLib_Dec, "Mode_"+str(idx+1))
             tmpstr.attrib['AType'] = str(pair[0])
@@ -306,6 +395,7 @@ while dCnt < len(dec_List):
             ## NEUTRON REACTION INFORMATION
             SubLib_nRxn = ET.SubElement(isotope, "Neutron_Reaction")
             for idx,pair in enumerate(sorted(nRxnType.items())):
+                ParamCnt +=1
                 tmpstr = 'nRxnMode_'+str(idx)
                 tmpstr = ET.SubElement(SubLib_nRxn, str(pair[0]))
                 tmpstr.text = str(pair[1])
@@ -332,6 +422,8 @@ Lib.write(file1, encoding='unicode')
 file1.close
 
 print(Fore.GREEN+'\nDone building library.\n')
+
+# print('Number of Parameters in Library = '+str(ParamCnt))
 
 ### temp workaround for parsing.
 # os.system('xmllint --format DecayData.xml > DecayData_tmp.xml')

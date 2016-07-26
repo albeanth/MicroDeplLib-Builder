@@ -22,7 +22,7 @@ def DecProgeny(flag, Z, N,decay_filename): ## Decay mode interpreter - direct fr
         whichLib = 454
         DecName = operation[flag]
         sf_filename = decay_filename.replace('dec-','sfy-')
-        sf_path = '../ENDF7.1/SubLib_SFyields/sfy/'
+        sf_path = './ENDF7.1/sfy/'
         sf_file = sf_path+'/'+sf_filename
         sf_List = os.listdir(sf_path)
         if sf_filename not in sf_List:
@@ -106,7 +106,7 @@ def MT_fission(flag,nFission_filename): #this ID's fission types, progeny, and y
         21: ('n_3nf'),
         38: ('n_4nf'),
     }
-    nFission_Path = '../ENDF7.1/SubLib_nfYields/nfy'
+    nFission_Path = './ENDF7.1/nfy'
     nFissionFile = nFission_Path+'/'+nFission_filename
     nFission_List = os.listdir(nFission_Path)
     if nFission_filename not in nFission_List: # not all fissionable isotopes have yield information.

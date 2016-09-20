@@ -362,7 +362,7 @@ while dCnt < len(dec_List):
     NumOfModes, Daughters, sfYield = TranslateDecayMode(Mode,Z,N,decay_file,decay_filename)
 
     ## PRINT RADIOACTIVE DECAY INFORMATION
-    isotope = ET.SubElement(root, ("Isotope"), Halflife = str(Half_Life), Name = str(dID), ZAID = str(dZAID) )
+    isotope = ET.SubElement(root, ("Isotope"), Decay_Constant = math.log(2)/str(Half_Life), Name = str(dID), ZAID = str(dZAID) )
     if Daughters == None:
         pass
     else:

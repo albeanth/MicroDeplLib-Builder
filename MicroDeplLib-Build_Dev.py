@@ -3,6 +3,7 @@ import os.path
 import linecache
 import re
 import numpy as np
+import math
 
 try:
     from colorama import Fore, Back, Style, init
@@ -351,9 +352,9 @@ while dCnt < len(dec_List):
     decay_filename = dec_List[dCnt]
     dCnt += 1
 
-    ## uncomment following two lines to stop library building with the listed filename
-    # if (decay_filename == 'dec-064_Gd_147.endf'):
-    #     break
+    # uncomment following two lines to stop library building with the listed filename
+    if (decay_filename == 'dec-006_C_022.endf'):
+        break
 
     print(Style.DIM + decay_filename+'   #'+str(dCnt))
 
@@ -368,7 +369,7 @@ while dCnt < len(dec_List):
     NumOfModes, Daughters, sfYield = TranslateDecayMode(Mode,Z,N,decay_file,decay_filename)
 
     ## PRINT RADIOACTIVE DECAY INFORMATION
-    isotope = ET.SubElement(root, ("Isotope"), Decay_Constant = math.log(2)/str(Half_Life), Name = str(dID), ZAID = str(dZAID) )
+    isotope = ET.SubElement(root, ("Isotope"), Decay_Constant = format(math.log(2)/float(Half_Life),'.6e'), Name = str(dID), ZAID = str(dZAID) )
     if Daughters == None:
         pass
     else:

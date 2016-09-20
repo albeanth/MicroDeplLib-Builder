@@ -1,9 +1,15 @@
 import sys,os
 import linecache
 import re
-from colorama import Fore, Back, Style
-from colorama import init
-init(autoreset=True)
+
+try:
+    from colorama import Fore, Back, Style, init
+    init(autoreset=True)
+    tmpStrY=Fore.YELLOW; tmpStrR=Fore.RED
+except ImportError:
+    # print('\nYou should get colorama. It\'s pretty sweet.\n')
+    tmpStrY=''
+
 
 def DecProgeny(flag, Z, N,decay_filename): ## Decay mode interpreter - direct from ENDF7.1 manual. Entries 8 and 9 are left out in manual
     FissP_Yield = None
@@ -26,7 +32,7 @@ def DecProgeny(flag, Z, N,decay_filename): ## Decay mode interpreter - direct fr
         sf_file = sf_path+'/'+sf_filename
         sf_List = os.listdir(sf_path)
         if sf_filename not in sf_List:
-            print(Fore.YELLOW+'No SF data available for '+str(sf_filename))
+            print(tmpStrY+'No SF data available for '+str(sf_filename))
             ProgName = {'Unknown': 'No ENDF distribution given.'}
             FissP_Yield = {'Unknown': 'No ENDF distribution given.'}
         else:
@@ -110,7 +116,7 @@ def MT_fission(flag,nFission_filename): #this ID's fission types, progeny, and y
     nFissionFile = nFission_Path+'/'+nFission_filename
     nFission_List = os.listdir(nFission_Path)
     if nFission_filename not in nFission_List: # not all fissionable isotopes have yield information.
-        print(Fore.YELLOW+'No (n,f) data available for '+str(nFission_filename))
+        print(tmpStrY+'No (n,f) data available for '+str(nFission_filename))
         fissType = flag
         FissP_ID = {'Unknown': 'No ENDF distribution given.'}
         FissP_Yield = {'Unknown': 'No ENDF distribution given.'}
@@ -139,7 +145,7 @@ def MT_fission(flag,nFission_filename): #this ID's fission types, progeny, and y
                 FissP_ID,FissP_Yield = Get_FissionProg(file1,FissP_ID,FissP_Yield)
 
             else:
-                print(Fore.RED+'\n I don\'t know what library you want, please check "whichLib". Quitting.\n')
+                print(tmpStrG+'\n I don\'t know what library you want, please check "whichLib". Quitting.\n')
                 sys.exit()
 
     return (fissType, FissP_ID, FissP_Yield)

@@ -3,9 +3,15 @@ import os.path
 import linecache
 import re
 import numpy as np
-from colorama import Fore, Back, Style
-from colorama import init
-init(autoreset=True)
+
+try:
+    from colorama import Fore, Back, Style, init
+    init(autoreset=True)
+    tmpStrY=Fore.YELLOW; tmpStrR=Fore.RED; tmpStrG=Fore.GREEN
+except ImportError:
+    print('\nYou should get colorama. It\'s pretty sweet.\n')
+    tmpStrY=''
+
 #packages needed for xml creation and parsing
 import xml.etree.ElementTree as ET
 import xml.dom.minidom as minidom
@@ -74,7 +80,7 @@ def Get_DecayInfo(count, current_file): #get Half_Life, Decay mode(s), Q value(s
             a = tmp.split()
             LNU = a[3] # indicates either tabulated or polynomial representation. for decay lib - SF is always tabulated
             if LNU ==1:
-                print(Fore.RED+'it''s a polynomial? really? ...quitting.')
+                print(tmpStrR+'it''s a polynomial? really? ...quitting.')
                 sys.exit()
             elif LNU ==2:
                 tmp = linecache.getline(current_file,(nuLibStart+2))
@@ -139,39 +145,39 @@ def TranslateDecayMode(Mode,Z,N,current_file,decay_filename): #translate RTYP nu
             Ztmp = Z; Ntmp = N
             # not all decay types for all isotopes lead to actual results. the following if...elif... statements ID which ones are issues.
             if ((current_file == './ENDF7.1/decay/dec-028_Ni_048.endf') and (elem == 2.0)):
-                print(Fore.YELLOW+'  No data for Ni-48 beta+ decay. Need data for Co-48. Passing...')
+                print(tmpStrY+'  No data for Ni-48 beta+ decay. Need data for Co-48. Passing...')
                 tmp = 'N/A'
                 continue
             elif ((current_file == './ENDF7.1/decay/dec-028_Ni_048.endf') and (elem == 7.7)):
-                print(Fore.YELLOW+'  No data for proton-proton decay. Need data for Co-47. Passing...')
+                print(tmpStrY+'  No data for proton-proton decay. Need data for Co-47. Passing...')
                 tmp = 'N/A'
                 continue
             elif ((current_file == './ENDF7.1/decay/dec-098_Cf_239.endf') and (elem == 2.0)):
-                print(Fore.YELLOW+'  No data for Bk-239 from Cf-239 beta+ decay. Passing...')
+                print(tmpStrY+'  No data for Bk-239 from Cf-239 beta+ decay. Passing...')
                 tmp = 'N/A'
                 continue
             elif ((current_file == './ENDF7.1/decay/dec-098_Cf_256.endf') and (elem == 4.0)):
-                print(Fore.YELLOW+'  No data for Cf-256 alpha decay (and it\'s probability is 1E-9). Passing...')
+                print(tmpStrY+'  No data for Cf-256 alpha decay (and it\'s probability is 1E-9). Passing...')
                 tmp = 'N/A'
                 continue
             elif ((current_file == './ENDF7.1/decay/dec-099_Es_240.endf') and (elem == 4.0)):
-                print(Fore.YELLOW+'  No data for Es-240 alpha decay. Need data for Bk-236. Passing...')
+                print(tmpStrY+'  No data for Es-240 alpha decay. Need data for Bk-236. Passing...')
                 tmp = 'N/A'
                 continue
             elif ((current_file == './ENDF7.1/decay/dec-099_Es_243.endf') and (elem == 4.0)):
-                print(Fore.YELLOW+'  No data for Es-243 alpha decay. Need data for Bk-239. Passing...')
+                print(tmpStrY+'  No data for Es-243 alpha decay. Need data for Bk-239. Passing...')
                 tmp = 'N/A'
                 continue
             elif ((current_file == './ENDF7.1/decay/dec-099_Es_258.endf') and (elem == 2.0)):
-                print(Fore.YELLOW+'  No data for Es-243 Beta+ decay. Need data for Cf-258 (which doesn\'t exist?). Passing...')
+                print(tmpStrY+'  No data for Es-243 Beta+ decay. Need data for Cf-258 (which doesn\'t exist?). Passing...')
                 tmp = 'N/A'
                 continue
             elif ((current_file == './ENDF7.1/decay/dec-104_Rf_253.endf') and (elem == 4.0)):
-                print(Fore.YELLOW+'  No data for Rf-253 alpha decay. Need data for No-249. Passing...')
+                print(tmpStrY+'  No data for Rf-253 alpha decay. Need data for No-249. Passing...')
                 tmp = 'N/A'
                 continue
             elif ((current_file == './ENDF7.1/decay/dec-110_Ds_279m1.endf') and (elem == 4.0)):
-                print(Fore.YELLOW+'  No data for Ds-279m1 alpha decay. Need data for Hs-275. Passing...')
+                print(tmpStrY+'  No data for Ds-279m1 alpha decay. Need data for Hs-275. Passing...')
                 tmp = 'N/A'
                 continue
             if ((elem-int(elem))>0.): # checks to see if there are multiple decays, e.g. 1.534
@@ -323,7 +329,7 @@ except FileNotFoundError:
 if not os.path.isfile('IsotopeID.txt'): # if the isotopeID list does not exist, create it
     IsotopeID = open('IsotopeID.txt','w')
     IsotopeID.write('ID \t\tZ   N   ZA\n')
-    print(Fore.GREEN + '\nBuilding isotope List from decay sublibrary.')#Once finished, please re-exeute script and decay library will be built.\n')
+    print(tmpStrG + '\nBuilding isotope List from decay sublibrary.')#Once finished, please re-exeute script and decay library will be built.\n')
     for endf in dec_List:
         ZAtmp, dZAID,dID,Z,N = Get_Info(dec_path+'/'+endf)
         IsotopeID.write(str(dID)+'\t\t'+str(Z)+'   '+str(N)+'   '+str(ZAtmp)+'\n')
@@ -421,7 +427,7 @@ while dCnt < len(dec_List):
 Lib.write(file1, encoding='unicode')
 file1.close
 
-print(Fore.GREEN+'\nDone building library.\n')
+print(tmpStrG+'\nDone building library.\n')
 
 # print('Number of Parameters in Library = '+str(ParamCnt))
 

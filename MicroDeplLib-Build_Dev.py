@@ -326,7 +326,7 @@ try:
 except FileNotFoundError:
     pass
 
-#### Check if Isotope List for decay daughter product ID needs to be built.
+#### Check if Isotope List for product ID needs to be built.
 if not os.path.isfile('IsotopeID.txt'): # if the isotopeID list does not exist, create it
     IsotopeID = open('IsotopeID.txt','w')
     IsotopeID.write('ID \t\tZ   N   ZA\n')
@@ -336,6 +336,14 @@ if not os.path.isfile('IsotopeID.txt'): # if the isotopeID list does not exist, 
         IsotopeID.write(str(dID)+'\t\t'+str(Z)+'   '+str(N)+'   '+str(ZAtmp)+'\n')
     IsotopeID.close()
 
+# initialize master dictionary with isotope parents, reactions, and branching ratios. 
+master = {}; sub = {'parents':None,'parent_reactions':None,'parent_branch_ratio':None}
+with open('IsotopeID.txt','r') as file1:
+    for i in range(1): # skips the first line
+        file1.__next__()
+    for line in file1:
+        line = line.split()
+        master[str(line[0])] = sub
 
 # Set up xml output information
 XML_out = 'DepletionData.xml'

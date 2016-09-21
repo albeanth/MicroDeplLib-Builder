@@ -8,7 +8,7 @@ import math
 try:
     from colorama import Fore, Back, Style, init
     init(autoreset=True)
-    tmpStrY=Fore.YELLOW; tmpStrR=Fore.RED; tmpStrG=Fore.GREEN
+    tmpStrY=Fore.YELLOW; tmpStrR=Fore.RED; tmpStrG=Fore.GREEN; tmpStrC=Fore.CYAN
 except ImportError:
     print('\nYou should get colorama. It\'s pretty sweet.\n')
     tmpStrY=''
@@ -336,8 +336,8 @@ if not os.path.isfile('IsotopeID.txt'): # if the isotopeID list does not exist, 
         IsotopeID.write(str(dID)+'\t\t'+str(Z)+'   '+str(N)+'   '+str(ZAtmp)+'\n')
     IsotopeID.close()
 
-# initialize master dictionary with isotope parents, reactions, and branching ratios. 
-master = {}; sub = {'parents':None,'parent_reactions':None,'parent_branch_ratio':None}
+# initialize master dictionary with isotope parents, reactions, and branching ratios.
+master = {}; sub = {'parent':None,'parent_reaction_type':None,'branch_ratio':None}
 with open('IsotopeID.txt','r') as file1:
     for i in range(1): # skips the first line
         file1.__next__()
@@ -352,7 +352,6 @@ root = ET.Element("Decay_Library", Generator = "INL", Name = "General ENDF7.1", 
 Lib = ET.ElementTree(root)
 
 
-
 #### START LOOPING THROUGH ENDF FILES
 ParamCnt = 0
 dCnt = 0; nCnt=0
@@ -361,7 +360,7 @@ while dCnt < len(dec_List):
     dCnt += 1
 
     # uncomment following two lines to stop library building with the listed filename
-    if (decay_filename == 'dec-006_C_022.endf'):
+    if (decay_filename == 'dec-001_H_007.endf'):
         break
 
     print(Style.DIM + decay_filename+'   #'+str(dCnt))
@@ -376,81 +375,101 @@ while dCnt < len(dec_List):
     Half_Life, Mode, Q, BR, nu = Get_DecayInfo(dCnt,decay_file)
     NumOfModes, Daughters, sfYield = TranslateDecayMode(Mode,Z,N,decay_file,decay_filename)
 
-    ## PRINT RADIOACTIVE DECAY INFORMATION
+    # {'parent':None,'parent_reaction_type':None,'branch_ratio':None}
+
     isotope = ET.SubElement(root, ("Isotope"), Decay_Constant = format(math.log(2)/float(Half_Life),'.6e'), Name = str(dID), ZAID = str(dZAID) )
+    SubLib_PRxn = ET.SubElement(isotope, "ParentReactionType")
+    SubLib_Parent = ET.SubElement(isotope, "Parent")
+    SubLib_PBR = ET.SubElement(isotope, "BranchRatio")
+
     if Daughters == None:
-        pass
+        ET.SubElement(SubLib_PRxn, None)
+        ET.SubElement(SubLib_Parent, None)
+        ET.SubElement(SubLib_PBR, None)
     else:
-        SubLib_Dec = ET.SubElement(isotope, "Decay")
         for idx,pair in enumerate(sorted(Daughters.items())):
-            ParamCnt += 1
-            tmpstr = 'decMode_'+str(idx)
-            tmpstr = ET.SubElement(SubLib_Dec, "Mode_"+str(idx+1))
-            tmpstr.attrib['AType'] = str(pair[0])
-            tmpstr.attrib['Branch_Ratio'] = str(BR[idx]).strip("[]")
-            tmpstr.attrib['Daughters'] = str(pair[1])
-            if not sfYield==None:
-                tmpstr.attrib['SF_Yield'] = str(sfYield).strip("[]")
-            tmpstr.attrib['Q_value'] = str(Q[idx]).strip("[]")
-    ################  END RAD DECAY INFO  ################
+            print(tmpStrC+str(pair))
+            master[str(pair[1])]['parent_reaction_type'] = str(pair[0])
+            SubLib_PRxn.text = str(pair[0])
+            master[str(pair[1])]['parent'] = dID
+            SubLib_Parent.text = str(dID)
+            master[str(pair[1])]['branch_ratio'] = BR[idx]
+            SubLib_PBR.text = str(BR[idx])
 
-    ################  NEUTRON REACTION INFORMATION  ################
-    while nCnt < len(nRxn_List):
-        nRxn_filename = nRxn_List[nCnt]
-        nFission_filename = nRxn_filename.replace('n-','nfy-')
-
-        nRxn_file = nRxn_path+'/'+nRxn_filename
-        ZAtmp,nrZAID,nrID,Z,N = Get_Info(nRxn_file)
-
-        if (str(nrID) == str(dID)): #if you have info for both neutron reactions and decay (comparing isotope ID names between decay and neutron reaction sublibraries) do neutron reaction functions
-            print(Style.DIM + '  ....adding Neutron Reactions!'+' (file #'+str(nCnt)+')')
-            nCnt += 1
-            nRxnType, FissProg, FissYield, Rxns_not_Tracked = Get_nRxn(nRxn_file,Z,N,nFission_filename)
-
-            ## NEUTRON REACTION INFORMATION
-            SubLib_nRxn = ET.SubElement(isotope, "Neutron_Reaction")
-            for idx,pair in enumerate(sorted(nRxnType.items())):
-                ParamCnt +=1
-                tmpstr = 'nRxnMode_'+str(idx)
-                tmpstr = ET.SubElement(SubLib_nRxn, str(pair[0]))
-                tmpstr.text = str(pair[1])
-
-            listing = sorted(FissProg.keys())
-            if len(listing) > 0:
-                nFissDau = ET.SubElement(SubLib_nRxn, "fission_daughters")
-                nFissDau.text = str(FissProg[listing[0]])
-                nFissY = ET.SubElement(SubLib_nRxn, "fission_yield")
-                nFissY.text = str(FissYield[listing[0]])
-            else:
-                pass
-
-            nRxnNT = ET.SubElement(SubLib_nRxn, "untracked_reactions")
-            nRxnNT.text = str(Rxns_not_Tracked).strip("[]")
-
-        else: # if no match between sublibraries, don't do any of the neutron reaction functions and skip to next file in decay sublibrary
-            break
-
-    ################  END NEUTRON REACTION INFO  ##################
-
+#     ################  NEUTRON REACTION INFORMATION  ################
+#     while nCnt < len(nRxn_List):
+#         nRxn_filename = nRxn_List[nCnt]
+#         nFission_filename = nRxn_filename.replace('n-','nfy-')
+#
+#         nRxn_file = nRxn_path+'/'+nRxn_filename
+#         ZAtmp,nrZAID,nrID,Z,N = Get_Info(nRxn_file)
+#
+#         if (str(nrID) == str(dID)): #if you have info for both neutron reactions and decay (comparing isotope ID names between decay and neutron reaction sublibraries) do neutron reaction functions
+#             print(Style.DIM + '  ....adding Neutron Reactions!'+' (file #'+str(nCnt)+')')
+#             nCnt += 1
+#             nRxnType, FissProg, FissYield, Rxns_not_Tracked = Get_nRxn(nRxn_file,Z,N,nFission_filename)
+#
+#         else: # if no match between sublibraries, don't do any of the neutron reaction functions and skip to next file in decay sublibrary
+#             break
+#
+#         for idx,pair in enumerate(sorted(nRxnType.items())):
+#             master[str(pair[1])]['parent_reaction_type'] = str(pair[0])
+#             master[str(pair[1])]['parent'] = dID
+#             # master[str(item)]['branch_ratio'] = BR[idx]
+#
+#     ################  END NEUTRON REACTION INFO  ##################
+#
+#
+# # print(master)
+# sys.exit()
+#
+# ## NEUTRON REACTION INFORMATION
+# SubLib_nRxn = ET.SubElement(isotope, "Neutron_Reaction")
+# for idx,pair in enumerate(sorted(nRxnType.items())):
+#     ParamCnt +=1
+#     tmpstr = 'nRxnMode_'+str(idx)
+#     tmpstr = ET.SubElement(SubLib_nRxn, str(pair[0]))
+#     tmpstr.text = str(pair[1])
+#
+# listing = sorted(FissProg.keys())
+# if len(listing) > 0:
+#     nFissDau = ET.SubElement(SubLib_nRxn, "fission_daughters")
+#     nFissDau.text = str(FissProg[listing[0]])
+#     nFissY = ET.SubElement(SubLib_nRxn, "fission_yield")
+#     nFissY.text = str(FissYield[listing[0]])
+# else:
+#     pass
+#
+# nRxnNT = ET.SubElement(SubLib_nRxn, "untracked_reactions")
+# nRxnNT.text = str(Rxns_not_Tracked).strip("[]")
+# ################  END n RXN INFO  ################
 
 Lib.write(file1, encoding='unicode')
 file1.close
 
 print(tmpStrG+'\nDone building library.\n')
 
-# print('Number of Parameters in Library = '+str(ParamCnt))
 
-### temp workaround for parsing.
-# os.system('xmllint --format DecayData.xml > DecayData_tmp.xml')
-# os.system('rm DecayData.xml')
-# os.system('mv DecayData_tmp.xml DecayData.xml')
-
-# doc2 = minidom.parse(XML_out)
-
-#### The code below works on simple toy problems but not here.... so use workaround system commands above.
-## use xml.dom.minidom and parse out previously created xml file.
-# xml = minidom.parse('DepletionData.xml')
-# pretty_xml_as_string = xml.toprettyxml()
-# file2 = open('DepletionData.xml', 'w', encoding = 'utf-8')
-# file2.write(pretty_xml_as_string)
-# file2.close()
+# ## PRINT RADIOACTIVE DECAY INFORMATION
+# isotope = ET.SubElement(root, ("Isotope"), Decay_Constant = format(math.log(2)/float(Half_Life),'.6e'), Name = str(dID), ZAID = str(dZAID) )
+# if Daughters == None:
+#     pass
+# else:
+#
+#
+#     # SubLib_Dec = ET.SubElement(isotope, "Decay")
+#     for idx,pair in enumerate(sorted(Daughters.items())):
+#         ParamCnt += 1
+#         print(pair)
+#         # SubLib_PRxn.text = str(pair[0])
+#         # SubLib_Parent.text =
+#         # SubLib_PBR.text =
+#     #     tmpstr = 'decMode_'+str(idx)
+#     #     tmpstr = ET.SubElement(SubLib_Dec, "Mode_"+str(idx+1))
+#     #     tmpstr.attrib['AType'] = str(pair[0])
+#     #     tmpstr.attrib['Branch_Ratio'] = str(BR[idx]).strip("[]")
+#     #     tmpstr.attrib['Daughters'] = str(pair[1])
+#     #     if not sfYield==None:
+#     #         tmpstr.attrib['SF_Yield'] = str(sfYield).strip("[]")
+#     #     tmpstr.attrib['Q_value'] = str(Q[idx]).strip("[]")
+# ################  END RAD DECAY INFO  ################

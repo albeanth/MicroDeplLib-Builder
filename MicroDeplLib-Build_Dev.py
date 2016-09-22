@@ -8,7 +8,7 @@ import math
 try:
     from colorama import Fore, Back, Style, init
     init(autoreset=True)
-    Yellow=Fore.YELLOW; Red=Fore.RED; Green=Fore.GREEN; Cyan=Fore.CYAN
+    Yellow=Fore.YELLOW; Red=Fore.RED; Green=Fore.GREEN; Cyan=Fore.CYAN; Magenta=Fore.MAGENTA
     StyDim=Style.DIM
 except ImportError:
     print('\nYou should get colorama. It\'s pretty sweet.\n')
@@ -428,30 +428,22 @@ while dCnt < len(dec_List):
         pass
     else:
         for idx,elem in enumerate(DecNameT):
-            print(Yellow+'   Reaction -> '+str(DecNameT[idx]))
-            print(Yellow+'   Daughter -> '+str(ProgNameT[idx]))
-            print(Yellow+'   Branching Ratio -> '+str(BR[idx]))
-            dum = 0
-            for elem in ProgNameT:
-                dum += len(elem)
-        # print(len(DecNameT),dum)
-        # for Dec,Prog in zip(DecNameT,ProgNameT):
-        #     print(Dec,Prog)
+            # print(Cyan+'   Reaction -> '+str(DecNameT[idx]))
+            # print(Yellow+'     Daughter -> '+str(ProgNameT[idx]))
+            # print(Yellow+'     Branching Ratio -> '+str(BR[idx]))
 
-        # for idx,pair in enumerate(sorted(Daughters.items())):
-        #     print(pair)
-        #     print(len(pair[0]))
-            # if len(pair[1]) > 3:
-            #     print(Yellow+str(pair[1][-5:-1]))
-            # print(Cyan+str(BR))
-            # master[str(pair[1])].add_parent(str(dID))
-            # master[str(pair[1])].add_PRxn(str(pair[0]))
-            # master[str(pair[1])].add_PBR(BR[idx])
+            if isinstance(ProgNameT[idx], list) == True: # decay chain. i.e. multiple decays. just grab final product and reaction type
+                master[str(ProgNameT[idx][-1])].add_parent(dID)
+                master[str(ProgNameT[idx][-1])].add_PRxn(DecNameT[idx][-1])
+                master[str(ProgNameT[idx][-1])].add_PBR(BR[idx])
+            else:
+                master[str(ProgNameT[idx])].add_parent(dID)
+                master[str(ProgNameT[idx])].add_PRxn(DecNameT[idx])
+                master[str(ProgNameT[idx])].add_PBR(BR[idx])
 
-# for elem in master.items():
-#     if int(len(elem[1].parents) > 0):
-#         print(elem[0])
-#         print('    '+str(elem[1].parents)+' ,'+str(elem[1].PRxns)+' ,'+str(elem[1].PBRs))
+for elem in master.items():
+    if int(len(elem[1].parents) > 0):
+        print('\n'+Cyan+elem[0]+' -> '+Yellow+str(elem[1].parents)+'\n       '+str(elem[1].PRxns)+'\n       '+str(elem[1].PBRs))
 sys.exit()
 
 

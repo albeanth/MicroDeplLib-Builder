@@ -26,6 +26,32 @@ try:
 except ImportError:
     from urllib2 import urlopen
 
+class Isotope:
+    """
+    The class will be used to define all of the isotopes and their characterisitcs.
+    The specific characterisitics to be tracked are defined in the constructor (def __init__).
+    Various functions are defined that append values to the classes.
+
+    Each of the isotopes here will be ordered in a dictionary. The dictionary keys
+    will be the isotope name and the values (which will be objects defined by the "Isotope" class)
+    will be the ZAIDs corresponding to the isotope name. For example:
+
+    master={'Nn1: '}
+    """
+    def __init__(self,ZAID):
+        self.ZAID = ZAID
+        self.parents = []
+        self.PRxns = []
+        self.PBRs = []
+
+    def add_parent(self, parent):
+        self.parents.append(parent)
+    def add_PRxn(self, PRxn):
+        self.PRxns.append(PRxn)
+    def add_PBR(self, PBR):
+        self.PBRs.append(PBR)
+
+
 ## GENERAL PURPOSE FUCNTIONS
 def Get_Info(current_file): #get ZAID and isotope ID
     ################################################################
@@ -337,13 +363,18 @@ if not os.path.isfile('IsotopeID.txt'): # if the isotopeID list does not exist, 
     IsotopeID.close()
 
 # initialize master dictionary with isotope parents, reactions, and branching ratios.
-master = {}; sub = {'parent':None,'parent_reaction_type':None,'branch_ratio':None}
+master = {}
 with open('IsotopeID.txt','r') as file1:
     for i in range(1): # skips the first line
         file1.__next__()
     for line in file1:
         line = line.split()
-        master[str(line[0])] = sub
+        ZAtmp = line[3] #gets ZA from line 2
+        ZA = re.split("([\+\-])", ZAtmp) #splits ZA into 3 components
+        ZA.insert(1, "E") #inserts the E needed for scientific notation
+        ZA = "".join(ZA[0:]) #rejoins array of strings into single string
+        ZAID = int(float(ZA)*10.0)
+        master[str(line[0])] = Isotope(ZAID)
 
 # Set up xml output information
 XML_out = 'DepletionData.xml'
@@ -375,26 +406,32 @@ while dCnt < len(dec_List):
     Half_Life, Mode, Q, BR, nu = Get_DecayInfo(dCnt,decay_file)
     NumOfModes, Daughters, sfYield = TranslateDecayMode(Mode,Z,N,decay_file,decay_filename)
 
-    # {'parent':None,'parent_reaction_type':None,'branch_ratio':None}
-
-    isotope = ET.SubElement(root, ("Isotope"), Decay_Constant = format(math.log(2)/float(Half_Life),'.6e'), Name = str(dID), ZAID = str(dZAID) )
-    SubLib_PRxn = ET.SubElement(isotope, "ParentReactionType")
-    SubLib_Parent = ET.SubElement(isotope, "Parent")
-    SubLib_PBR = ET.SubElement(isotope, "BranchRatio")
-
+    # master[str(dID)] = Isotope(str(dZAID)) # appends master list with new isotope object with appropriate ID.
     if Daughters == None:
-        ET.SubElement(SubLib_PRxn, None)
-        ET.SubElement(SubLib_Parent, None)
-        ET.SubElement(SubLib_PBR, None)
+        pass
     else:
         for idx,pair in enumerate(sorted(Daughters.items())):
             print(tmpStrC+str(pair))
-            master[str(pair[1])]['parent_reaction_type'] = str(pair[0])
-            SubLib_PRxn.text = str(pair[0])
-            master[str(pair[1])]['parent'] = dID
-            SubLib_Parent.text = str(dID)
-            master[str(pair[1])]['branch_ratio'] = BR[idx]
-            SubLib_PBR.text = str(BR[idx])
+            print(tmpStrC+str(BR))
+            master[str(pair[1])].add_parent(str(dID))
+            master[str(pair[1])].add_PRxn(str(pair[0]))
+            master[str(pair[1])].add_PBR(BR[idx])
+
+# isotope = ET.SubElement(root, ("Isotope"), Decay_Constant = format(math.log(2)/float(Half_Life),'.6e'), Name = str(dID), ZAID = str(dZAID) )
+# SubLib_PRxn = ET.SubElement(isotope, "ParentReactionType")
+# SubLib_Parent = ET.SubElement(isotope, "Parent")
+# SubLib_PBR = ET.SubElement(isotope, "BranchRatio")
+
+# SubLib_PRxn.text = str(pair[0])
+# SubLib_Parent.text = str(dID)
+# SubLib_PBR.text = str(BR[idx])
+
+for elem in master.items():
+    if int(len(elem[1].parents) > 0):
+        print(elem[0])
+        print('    '+str(elem[1].parents)+' ,'+str(elem[1].PRxns)+' ,'+str(elem[1].PBRs))
+sys.exit()
+
 
 #     ################  NEUTRON REACTION INFORMATION  ################
 #     while nCnt < len(nRxn_List):

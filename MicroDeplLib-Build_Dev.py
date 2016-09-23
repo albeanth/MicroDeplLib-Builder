@@ -408,7 +408,7 @@ while dCnt < len(dec_List):
     dCnt += 1
 
     # uncomment following two lines to stop library building with the listed filename
-    if (decay_filename == 'dec-006_C_008.endf'):#dec-002_He_003.endf
+    if (decay_filename == 'nfy-090_Th_229.endf'):#dec-002_He_003.endf
         break
 
     print(StyDim + decay_filename+'   #'+str(dCnt))
@@ -436,39 +436,41 @@ while dCnt < len(dec_List):
                 master[str(ProgNameT[idx][-1])].add_parent(dID)
                 master[str(ProgNameT[idx][-1])].add_PRxn(DecNameT[idx][-1])
                 master[str(ProgNameT[idx][-1])].add_PBR(BR[idx])
+            elif ProgNameT[idx] = 'Unknown, no ENDF distribution given.':
+                pass
             else:
                 master[str(ProgNameT[idx])].add_parent(dID)
                 master[str(ProgNameT[idx])].add_PRxn(DecNameT[idx])
                 master[str(ProgNameT[idx])].add_PBR(BR[idx])
 
+    ################  NEUTRON REACTION INFORMATION  ################
+    while nCnt < len(nRxn_List):
+        nRxn_filename = nRxn_List[nCnt]
+        nFission_filename = nRxn_filename.replace('n-','nfy-')
+
+        nRxn_file = nRxn_path+'/'+nRxn_filename
+        ZAtmp,nrZAID,nrID,Z,N = Get_Info(nRxn_file)
+
+        if (str(nrID) == str(dID)): #if you have info for both neutron reactions and decay (comparing isotope ID names between decay and neutron reaction sublibraries) do neutron reaction functions
+            print(StyDim + '  ....adding Neutron Reactions!'+' (file #'+str(nCnt)+')')
+            nCnt += 1
+            nRxnType, FissProg, FissYield, Rxns_not_Tracked = Get_nRxn(nRxn_file,Z,N,nFission_filename)
+            if len(FissProg)>0:
+                print(FissProg)
+                print(FissYield)
+            for key,value in nRxnType.items():
+                master[str(value)].add_parent(dID)
+                master[str(value)].add_PRxn(key)
+                master[str(value)].add_PBR('--')
+
+        else: # if no match between sublibraries, don't do any of the neutron reaction functions and skip to next file in decay sublibrary
+            break
 for elem in master.items():
     if int(len(elem[1].parents) > 0):
         print('\n'+Cyan+elem[0]+' -> '+Yellow+str(elem[1].parents)+'\n       '+str(elem[1].PRxns)+'\n       '+str(elem[1].PBRs))
+
 sys.exit()
-
-
-#     ################  NEUTRON REACTION INFORMATION  ################
-#     while nCnt < len(nRxn_List):
-#         nRxn_filename = nRxn_List[nCnt]
-#         nFission_filename = nRxn_filename.replace('n-','nfy-')
-#
-#         nRxn_file = nRxn_path+'/'+nRxn_filename
-#         ZAtmp,nrZAID,nrID,Z,N = Get_Info(nRxn_file)
-#
-#         if (str(nrID) == str(dID)): #if you have info for both neutron reactions and decay (comparing isotope ID names between decay and neutron reaction sublibraries) do neutron reaction functions
-#             print(StyDim + '  ....adding Neutron Reactions!'+' (file #'+str(nCnt)+')')
-#             nCnt += 1
-#             nRxnType, FissProg, FissYield, Rxns_not_Tracked = Get_nRxn(nRxn_file,Z,N,nFission_filename)
-#
-#         else: # if no match between sublibraries, don't do any of the neutron reaction functions and skip to next file in decay sublibrary
-#             break
-#
-#         for idx,pair in enumerate(sorted(nRxnType.items())):
-#             master[str(pair[1])]['parent_reaction_type'] = str(pair[0])
-#             master[str(pair[1])]['parent'] = dID
-#             # master[str(item)]['branch_ratio'] = BR[idx]
-#
-#     ################  END NEUTRON REACTION INFO  ##################
+    ################  END NEUTRON REACTION INFO  ##################
 #
 #
 # # print(master)

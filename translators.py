@@ -33,8 +33,8 @@ def DecProgeny(flag, Z, N,decay_filename): ## Decay mode interpreter - direct fr
         sf_List = os.listdir(sf_path)
         if sf_filename not in sf_List:
             print(tmpStrY+'No SF data available for '+str(sf_filename))
-            ProgName = {'Unknown': 'No ENDF distribution given.'}
-            FissP_Yield = {'Unknown': 'No ENDF distribution given.'}
+            ProgName = 'Unknown, no ENDF distribution given.'
+            FissP_Yield = 'Unknown, no ENDF distribution given.'
         else:
             FissP_ID = {}; FissP_Yield = {}
             with open(sf_file,'r') as file1:
@@ -118,8 +118,8 @@ def MT_fission(flag,nFission_filename): #this ID's fission types, progeny, and y
     if nFission_filename not in nFission_List: # not all fissionable isotopes have yield information.
         print(tmpStrY+'No (n,f) data available for '+str(nFission_filename))
         fissType = flag
-        FissP_ID = {'Unknown': 'No ENDF distribution given.'}
-        FissP_Yield = {'Unknown': 'No ENDF distribution given.'}
+        FissP_ID = 'Unknown, no ENDF distribution given.'
+        FissP_Yield = 'Unknown, no ENDF distribution given.'
     else:
         fissType = operation[flag]
         whichLib = 454 # make either 454 or 459 for independent yield or cumulative yield, respectively.

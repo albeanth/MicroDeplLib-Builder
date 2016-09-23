@@ -12,7 +12,7 @@ try:
     StyDim=Style.DIM
 except ImportError:
     print('\nYou should get colorama. It\'s pretty sweet.\n')
-    Yellow=''; Red=''; Green=''; Cyan=''
+    Yellow=''; Red=''; Green=''; Cyan=''; Magenta = ''
     StyDim='';
 
 #packages needed for xml creation and parsing
@@ -221,8 +221,8 @@ def TranslateDecayMode(Mode,Z,N,current_file,decay_filename): #translate RTYP nu
                     if elem1.count(elem1)==0: # if elem1 is the ['5', '3', '4'] term
                         # DecNameL = np.array((len(elem1),1),dtype=str)
                         # ProgNameL = np.array((len(elem1),1),dtype=str)
-                        DecNameL = np.chararray(len(elem1),16,True)
-                        ProgNameL = np.chararray(len(elem1),16,True)
+                        DecNameL = np.chararray(len(elem1),36,True) # 36 is length of longest possible string that can go into ProgName OR DecName
+                        ProgNameL = np.chararray(len(elem1),36,True)
                         for idx2,elem2 in enumerate(elem1): # for each term, '5','3','4'
                             DecNameL[idx2],ProgNameL[idx2],dummy, Ztmp, Ntmp = trls.DecProgeny(int(elem2),Ztmp,Ntmp,decay_filename)
                     else:
@@ -401,17 +401,17 @@ Lib = ET.ElementTree(root)
 
 
 #### START LOOPING THROUGH ENDF FILES
-ParamCnt = 0
+ParamCnt = 0; dum = 0 # dum is a counter for tracking how many total reactions need to be added in line 470
 dCnt = 0; nCnt=0
 while dCnt < len(dec_List):
     decay_filename = dec_List[dCnt]
     dCnt += 1
 
-    # uncomment following two lines to stop library building with the listed filename
-    if (decay_filename == 'nfy-090_Th_229.endf'):#dec-002_He_003.endf
-        break
+    # # uncomment following two lines to stop library building with the listed filename
+    # if (decay_filename == 'dec-090_Th_228.endf'):#dec-002_He_003.endf
+    #     break
 
-    print(StyDim + decay_filename+'   #'+str(dCnt))
+    print(decay_filename+StyDim+'   #'+str(dCnt))
 
     if ((decay_filename == 'dec-003_Li_008.endf') or (decay_filename == 'dec-003_Li_009.endf')):
         continue
@@ -431,13 +431,12 @@ while dCnt < len(dec_List):
             # print(Cyan+'   Reaction -> '+str(DecNameT[idx]))
             # print(Yellow+'     Daughter -> '+str(ProgNameT[idx]))
             # print(Yellow+'     Branching Ratio -> '+str(BR[idx]))
-
-            if isinstance(ProgNameT[idx], list) == True: # decay chain. i.e. multiple decays. just grab final product and reaction type
-                master[str(ProgNameT[idx][-1])].add_parent(dID)
-                master[str(ProgNameT[idx][-1])].add_PRxn(DecNameT[idx][-1])
-                master[str(ProgNameT[idx][-1])].add_PBR(BR[idx])
-            elif ProgNameT[idx] = 'Unknown, no ENDF distribution given.':
+            if 'Unknown, no ENDF distribution given.' in ProgNameT[idx]: # if decay chain has a spontaneous fission anywhere in it, pass.
                 pass
+            elif isinstance(ProgNameT[idx], list) == True: # decay chain. i.e. multiple decays. just grab final product and reaction type
+                    master[str(ProgNameT[idx][-1])].add_parent(dID)
+                    master[str(ProgNameT[idx][-1])].add_PRxn(DecNameT[idx][-1])
+                    master[str(ProgNameT[idx][-1])].add_PBR(BR[idx])
             else:
                 master[str(ProgNameT[idx])].add_parent(dID)
                 master[str(ProgNameT[idx])].add_PRxn(DecNameT[idx])
@@ -452,22 +451,51 @@ while dCnt < len(dec_List):
         ZAtmp,nrZAID,nrID,Z,N = Get_Info(nRxn_file)
 
         if (str(nrID) == str(dID)): #if you have info for both neutron reactions and decay (comparing isotope ID names between decay and neutron reaction sublibraries) do neutron reaction functions
-            print(StyDim + '  ....adding Neutron Reactions!'+' (file #'+str(nCnt)+')')
+            print(StyDim+'  ....adding Neutron Reactions!'+' (file #'+str(nCnt)+')')
             nCnt += 1
             nRxnType, FissProg, FissYield, Rxns_not_Tracked = Get_nRxn(nRxn_file,Z,N,nFission_filename)
-            if len(FissProg)>0:
-                print(FissProg)
-                print(FissYield)
-            for key,value in nRxnType.items():
-                master[str(value)].add_parent(dID)
-                master[str(value)].add_PRxn(key)
-                master[str(value)].add_PBR('--')
+            if 'Unknown, no ENDF distribution given.' in FissProg: # some neutron induced fission reactions have unidentified daughter products and yields
+                pass
+            elif len(FissProg)>0: # there is a fission event that has fission daughters and associated yields
+                try: # try and see if there is thermal fission data
+                    energy = '2.530000-2'
+                    test = FissProg['2.530000-2']
+                except KeyError: # there is not. so use the most thermal data
+                    tmpL = list(FissProg.keys())
+                    # print(Red+'  '+str(tmpL))  # can uncomment this line to view what other incoming neutron energy, neutron induced fission data is available.
+                    energy = tmpL[-1]
+                    print(Red+'    '+str(dID)+' has no thermal (0.0253 eV) fission data. Using '+str(trls.ScientificNotation(energy))+' eV data instead.')
+                    # print(FissProg.keys()); sys.exit()              # Can uncomment print statement here to see what neutron energies that induce fission are being passed over.
+                for FP,FY in zip(FissProg[str(energy)],FissYield[str(energy)]): #only looking at thermal neutron fission. can include fast and epithermal fissions if desired.
+                    if ((FY == '0.000000E+0') or (len(FP) == 10)): # a good amount of listed fission products have a 0 yield. Some listed fission products also are not idetifiable (those with len=10).
+                        # print(FP, FY)                            # Can uncomment print statement here to see what fission products are being passed over
+                        pass
+                    else:
+                        try:
+                            master[str(FP)].add_parent(dID)
+                        except KeyError:
+                            print(Red+'  Need to add '+str(FP)+' to IsotopeID.txt')
+                            master[str(FP)] = Isotope(int(9999+dum)) # the +dum gives the object a unique identifier.
+                            master[str(FP)].add_parent(dID)
+                            dum += 1
+                        master[str(FP)].add_PRxn('Fission')
+                        master[str(FP)].add_PBR(FY)
+            else:
+                for key,value in nRxnType.items():
+                    master[str(value)].add_parent(dID)
+                    master[str(value)].add_PRxn(key)
+                    master[str(value)].add_PBR('1.000000E+0')
 
         else: # if no match between sublibraries, don't do any of the neutron reaction functions and skip to next file in decay sublibrary
             break
+NoDataL = []
 for elem in master.items():
     if int(len(elem[1].parents) > 0):
         print('\n'+Cyan+elem[0]+' -> '+Yellow+str(elem[1].parents)+'\n       '+str(elem[1].PRxns)+'\n       '+str(elem[1].PBRs))
+    else:
+        NoDataL.append(elem[0])
+
+print(NoDataL)
 
 sys.exit()
     ################  END NEUTRON REACTION INFO  ##################

@@ -5,10 +5,12 @@ import re
 try:
     from colorama import Fore, Back, Style, init
     init(autoreset=True)
-    tmpStrY=Fore.YELLOW; tmpStrR=Fore.RED
+    Yellow=Fore.YELLOW; Red=Fore.RED; Green=Fore.GREEN; Cyan=Fore.CYAN; Magenta=Fore.MAGENTA
+    StyDim=Style.DIM
 except ImportError:
-    # print('\nYou should get colorama. It\'s pretty sweet.\n')
-    tmpStrY=''
+    print('\nYou should get colorama. It\'s pretty sweet.\n')
+    Yellow=''; Red=''; Green=''; Cyan=''; Magenta = ''
+    StyDim='';
 
 
 def DecProgeny(flag, Z, N,decay_filename): ## Decay mode interpreter - direct from ENDF7.1 manual. Entries 8 and 9 are left out in manual
@@ -32,7 +34,7 @@ def DecProgeny(flag, Z, N,decay_filename): ## Decay mode interpreter - direct fr
         sf_file = sf_path+'/'+sf_filename
         sf_List = os.listdir(sf_path)
         if sf_filename not in sf_List:
-            print(tmpStrY+'No SF data available for '+str(sf_filename))
+            print(Yellow+'  No SF data available for '+str(sf_filename))
             ProgName = 'Unknown, no ENDF distribution given.'
             FissP_Yield = 'Unknown, no ENDF distribution given.'
         else:
@@ -57,7 +59,7 @@ def DecProgeny(flag, Z, N,decay_filename): ## Decay mode interpreter - direct fr
                     ProgName, FissP_Yield = Get_FissionProg(file1,FissP_ID,FissP_Yield)
 
                 else:
-                    print('\n I don\'t know what library you want, please check "whichLib". Quitting.\n')
+                    print(Red+'\n I don\'t know what library you want, please check "whichLib". Quitting.\n')
                     sys.exit()
 
                 ProgName = ProgName['0.000000+0'] #SF data has a "incident" energy of 0. No need to keep key from dictionary. Just pull value.
@@ -92,8 +94,6 @@ def MT(flag, Z, N): # ID's neutron reaction types (except fission) and gets daug
     MTlist = operation.keys()
     if flag not in MTlist:
         RxnType = ' '; noTrack = flag
-    elif flag == 18:
-        RxnType = operation[flag][1]
     else:
         Z += operation[flag][0]
         N += operation[flag][1]
@@ -116,7 +116,7 @@ def MT_fission(flag,nFission_filename): #this ID's fission types, progeny, and y
     nFissionFile = nFission_Path+'/'+nFission_filename
     nFission_List = os.listdir(nFission_Path)
     if nFission_filename not in nFission_List: # not all fissionable isotopes have yield information.
-        print(tmpStrY+'No (n,f) data available for '+str(nFission_filename))
+        print(Yellow+'  No (n,f) data available for '+str(nFission_filename))
         fissType = flag
         FissP_ID = 'Unknown, no ENDF distribution given.'
         FissP_Yield = 'Unknown, no ENDF distribution given.'
@@ -145,7 +145,7 @@ def MT_fission(flag,nFission_filename): #this ID's fission types, progeny, and y
                 FissP_ID,FissP_Yield = Get_FissionProg(file1,FissP_ID,FissP_Yield)
 
             else:
-                print(tmpStrG+'\n I don\'t know what library you want, please check "whichLib". Quitting.\n')
+                print(Red+'\n I don\'t know what library you want, please check "whichLib". Quitting.\n')
                 sys.exit()
 
     return (fissType, FissP_ID, FissP_Yield)

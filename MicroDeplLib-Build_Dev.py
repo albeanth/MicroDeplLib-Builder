@@ -38,13 +38,14 @@ class Isotope:
     will be the isotope name and the values (which will be objects defined by the "Isotope" class)
     will be the ZAIDs corresponding to the isotope name. For example:
 
-    master={'Nn1: '}
+    master={'Nn1': 10, 'H1': 100100, etc...}
     """
     def __init__(self,ZAID):
         self.ZAID = ZAID
         self.parents = []
         self.PRxns = []
         self.PBRs = []
+        self.HalfLife = None
 
     def add_parent(self, parent):
         self.parents.append(parent)
@@ -52,6 +53,8 @@ class Isotope:
         self.PRxns.append(PRxn)
     def add_PBR(self, PBR):
         self.PBRs.append(PBR)
+    def add_HalfLife(self, HalfLife):
+        self.HalfLife = HalfLife
 
 
 ## GENERAL PURPOSE FUCNTIONS
@@ -260,6 +263,7 @@ def Get_nRxn(nRxn_file,Z,N,nFission_filename): # this goes through each neutron 
             a = line.split()
             if (a[0]=='3'): # ID's which neutron reactions are tabulated.
                 if (a[1]=='18'): #or (a[1]=='19') or (a[1]=='20') or (a[1]=='21') or (a[1]=='38')
+                    print(StyDim+'  going to get neutron induced fission products.')
                     fissType, FissP_ID, FissP_Yield = trls.MT_fission(int(a[1]),nFission_filename)
                 else:
                     Ztmp,Ntmp,RxnType,noTrack = trls.MT(int(a[1]),Z,N) # using base Z & N values of isotope, get new Z & N for isotope post neutron reaction
@@ -393,13 +397,6 @@ with open('IsotopeID.txt','r') as file1:
         ZAID = int(float(ZA)*10.0)
         master[str(line[0])] = Isotope(ZAID)
 
-# Set up xml output information
-XML_out = 'DepletionData.xml'
-file1 = open(XML_out, 'w', encoding = 'utf-8')
-root = ET.Element("Decay_Library", Generator = "INL", Name = "General ENDF7.1", Ver = "1.0")
-Lib = ET.ElementTree(root)
-
-
 #### START LOOPING THROUGH ENDF FILES
 ParamCnt = 0; dum = 0 # dum is a counter for tracking how many total reactions need to be added in line 470
 dCnt = 0; nCnt=0
@@ -408,7 +405,7 @@ while dCnt < len(dec_List):
     dCnt += 1
 
     # # uncomment following two lines to stop library building with the listed filename
-    # if (decay_filename == 'dec-090_Th_228.endf'):#dec-002_He_003.endf
+    # if (decay_filename == 'dec-006_C_008.endf'):# dec-002_He_003.endf
     #     break
 
     print(decay_filename+StyDim+'   #'+str(dCnt))
@@ -421,6 +418,7 @@ while dCnt < len(dec_List):
     ################  RADIOACTIVE DECAY INFORMATION  ################
     ZAtmp,dZAID,dID,Z,N = Get_Info(decay_file)
     Half_Life, Mode, Q, BR, nu = Get_DecayInfo(dCnt,decay_file)
+    master[str(dID)].add_HalfLife(Half_Life)
     NumOfModes, DecNameT, ProgNameT, sfYield = TranslateDecayMode(Mode,Z,N,decay_file,decay_filename)
 
     # master[str(dID)] = Isotope(str(dZAID)) # appends master list with new isotope object with appropriate ID.
@@ -436,11 +434,11 @@ while dCnt < len(dec_List):
             elif isinstance(ProgNameT[idx], list) == True: # decay chain. i.e. multiple decays. just grab final product and reaction type
                     master[str(ProgNameT[idx][-1])].add_parent(dID)
                     master[str(ProgNameT[idx][-1])].add_PRxn(DecNameT[idx][-1])
-                    master[str(ProgNameT[idx][-1])].add_PBR(BR[idx])
+                    master[str(ProgNameT[idx][-1])].add_PBR(str(BR[idx]))
             else:
                 master[str(ProgNameT[idx])].add_parent(dID)
                 master[str(ProgNameT[idx])].add_PRxn(DecNameT[idx])
-                master[str(ProgNameT[idx])].add_PBR(BR[idx])
+                master[str(ProgNameT[idx])].add_PBR(str(BR[idx]))
 
     ################  NEUTRON REACTION INFORMATION  ################
     while nCnt < len(nRxn_List):
@@ -451,7 +449,7 @@ while dCnt < len(dec_List):
         ZAtmp,nrZAID,nrID,Z,N = Get_Info(nRxn_file)
 
         if (str(nrID) == str(dID)): #if you have info for both neutron reactions and decay (comparing isotope ID names between decay and neutron reaction sublibraries) do neutron reaction functions
-            print(StyDim+'  ....adding Neutron Reactions!'+' (file #'+str(nCnt)+')')
+            print(StyDim+'  adding Neutron Reactions...'+' (file #'+str(nCnt)+')')
             nCnt += 1
             nRxnType, FissProg, FissYield, Rxns_not_Tracked = Get_nRxn(nRxn_file,Z,N,nFission_filename)
             if 'Unknown, no ENDF distribution given.' in FissProg: # some neutron induced fission reactions have unidentified daughter products and yields
@@ -462,9 +460,9 @@ while dCnt < len(dec_List):
                     test = FissProg['2.530000-2']
                 except KeyError: # there is not. so use the most thermal data
                     tmpL = list(FissProg.keys())
-                    # print(Red+'  '+str(tmpL))  # can uncomment this line to view what other incoming neutron energy, neutron induced fission data is available.
-                    energy = tmpL[-1]
-                    print(Red+'    '+str(dID)+' has no thermal (0.0253 eV) fission data. Using '+str(trls.ScientificNotation(energy))+' eV data instead.')
+                    print(StyDim+'  Tabulated incident neutron energies --> '+str(tmpL))  # can uncomment this line to view what other incoming neutron energy, neutron induced fission data is available.
+                    energy = tmpL[0]
+                    print(Yellow+'    '+str(dID)+' has no thermal (0.0253 eV) fission data. Using '+str(trls.ScientificNotation(energy))+' eV data instead.')
                     # print(FissProg.keys()); sys.exit()              # Can uncomment print statement here to see what neutron energies that induce fission are being passed over.
                 for FP,FY in zip(FissProg[str(energy)],FissYield[str(energy)]): #only looking at thermal neutron fission. can include fast and epithermal fissions if desired.
                     if ((FY == '0.000000E+0') or (len(FP) == 10)): # a good amount of listed fission products have a 0 yield. Some listed fission products also are not idetifiable (those with len=10).
@@ -480,87 +478,40 @@ while dCnt < len(dec_List):
                             dum += 1
                         master[str(FP)].add_PRxn('Fission')
                         master[str(FP)].add_PBR(FY)
-            else:
-                for key,value in nRxnType.items():
-                    master[str(value)].add_parent(dID)
-                    master[str(value)].add_PRxn(key)
-                    master[str(value)].add_PBR('1.000000E+0')
+            for key,value in nRxnType.items():
+                master[str(value)].add_parent(dID)
+                master[str(value)].add_PRxn(key)
+                master[str(value)].add_PBR('1.0')
 
         else: # if no match between sublibraries, don't do any of the neutron reaction functions and skip to next file in decay sublibrary
             break
+
+    ################  END NEUTRON REACTION INFO  ##################
+
+# Set up xml output information
+XML_out = 'DepletionData.xml'
+file1 = open(XML_out, 'w', encoding = 'utf-8')
+root = ET.Element("Decay_Library", Generator = "INL", Name = "General ENDF7.1", Ver = "1.0")
+Lib = ET.ElementTree(root)
+
 NoDataL = []
 for elem in master.items():
-    if int(len(elem[1].parents) > 0):
-        print('\n'+Cyan+elem[0]+' -> '+Yellow+str(elem[1].parents)+'\n       '+str(elem[1].PRxns)+'\n       '+str(elem[1].PBRs))
+    if elem[1].HalfLife is not None:
+        isotope = ET.SubElement(root, ("Isotope"), Decay_Constant = format(math.log(2)/float(elem[1].HalfLife),'.6e'), Name = str(elem[0]), ZAID = str(elem[1].ZAID) )
+        SubLib_PRxn = ET.SubElement(isotope, "parent_reaction_type")
+        SubLib_PRxn.text = ",".join(elem[1].PRxns)
+        SubLib_Parent = ET.SubElement(isotope, "parent")
+        SubLib_Parent.text = ",".join(elem[1].parents)
+        SubLib_PBR =  ET.SubElement(isotope, "branch_ratio")
+        SubLib_PBR.text = ",".join(elem[1].PBRs)
     else:
         NoDataL.append(elem[0])
 
-print(NoDataL)
-
-sys.exit()
-    ################  END NEUTRON REACTION INFO  ##################
-#
-#
-# # print(master)
-# sys.exit()
-#
-# ## NEUTRON REACTION INFORMATION
-# SubLib_nRxn = ET.SubElement(isotope, "Neutron_Reaction")
-# for idx,pair in enumerate(sorted(nRxnType.items())):
-#     ParamCnt +=1
-#     tmpstr = 'nRxnMode_'+str(idx)
-#     tmpstr = ET.SubElement(SubLib_nRxn, str(pair[0]))
-#     tmpstr.text = str(pair[1])
-#
-# listing = sorted(FissProg.keys())
-# if len(listing) > 0:
-#     nFissDau = ET.SubElement(SubLib_nRxn, "fission_daughters")
-#     nFissDau.text = str(FissProg[listing[0]])
-#     nFissY = ET.SubElement(SubLib_nRxn, "fission_yield")
-#     nFissY.text = str(FissYield[listing[0]])
-# else:
-#     pass
-#
-# nRxnNT = ET.SubElement(SubLib_nRxn, "untracked_reactions")
-# nRxnNT.text = str(Rxns_not_Tracked).strip("[]")
-# ################  END n RXN INFO  ################
+# print(Yellow+'The following isotopes have no Half Life associated with them:\n')
+# for item in NoDataL:
+#     print(Yellow+'  '+str(item))
 
 Lib.write(file1, encoding='unicode')
 file1.close
 
 print(Green+'\nDone building library.\n')
-
-
-# isotope = ET.SubElement(root, ("Isotope"), Decay_Constant = format(math.log(2)/float(Half_Life),'.6e'), Name = str(dID), ZAID = str(dZAID) )
-# SubLib_PRxn = ET.SubElement(isotope, "ParentReactionType")
-# SubLib_Parent = ET.SubElement(isotope, "Parent")
-# SubLib_PBR = ET.SubElement(isotope, "BranchRatio")
-
-# SubLib_PRxn.text = str(pair[0])
-# SubLib_Parent.text = str(dID)
-# SubLib_PBR.text = str(BR[idx])
-
-
-# ## PRINT RADIOACTIVE DECAY INFORMATION
-# isotope = ET.SubElement(root, ("Isotope"), Decay_Constant = format(math.log(2)/float(Half_Life),'.6e'), Name = str(dID), ZAID = str(dZAID) )
-# if Daughters == None:
-#     pass
-# else:
-#
-#
-#     # SubLib_Dec = ET.SubElement(isotope, "Decay")
-#     for idx,pair in enumerate(sorted(Daughters.items())):
-#         ParamCnt += 1
-#         print(pair)
-#         # SubLib_PRxn.text = str(pair[0])
-#         # SubLib_Parent.text =
-#         # SubLib_PBR.text =
-#     #     tmpstr = 'decMode_'+str(idx)
-#     #     tmpstr = ET.SubElement(SubLib_Dec, "Mode_"+str(idx+1))
-#     #     tmpstr.attrib['AType'] = str(pair[0])
-#     #     tmpstr.attrib['Branch_Ratio'] = str(BR[idx]).strip("[]")
-#     #     tmpstr.attrib['Daughters'] = str(pair[1])
-#     #     if not sfYield==None:
-#     #         tmpstr.attrib['SF_Yield'] = str(sfYield).strip("[]")
-#     #     tmpstr.attrib['Q_value'] = str(Q[idx]).strip("[]")
-# ################  END RAD DECAY INFO  ################

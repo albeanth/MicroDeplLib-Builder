@@ -27,6 +27,7 @@ def DecProgeny(flag, Z, N,decay_filename): ## Decay mode interpreter - direct fr
         10: (0, 0, 'unknown'),
     }
     if flag == 6:
+        print(StyDim+'  going to get neutron induced fission products.')
         whichLib = 454
         DecName = operation[flag]
         sf_filename = decay_filename.replace('dec-','sfy-')
@@ -34,7 +35,7 @@ def DecProgeny(flag, Z, N,decay_filename): ## Decay mode interpreter - direct fr
         sf_file = sf_path+'/'+sf_filename
         sf_List = os.listdir(sf_path)
         if sf_filename not in sf_List:
-            print(Yellow+'  No SF data available for '+str(sf_filename))
+            print(Yellow+'    ...no SF data available for '+str(sf_filename))
             ProgName = 'Unknown, no ENDF distribution given.'
             FissP_Yield = 'Unknown, no ENDF distribution given.'
         else:
@@ -79,17 +80,17 @@ def MT(flag, Z, N): # ID's neutron reaction types (except fission) and gets daug
 
     noTrack = ' ' # initialize storing of types that are not being tracked.
     operation = {
-        16: (0,-1,'n_2n'),
-        17: (0,-2,'n_3n'),
-        37: (0,-3,'n_4n'),
-        102: (0, 1,'n_gamma'),
-        103: (-1, 1,'n_p'),
-        104: (-1, 0,'n_d'),
-        105: (-1, -1,'n_t'),
-        106: (-2, 0,'n_He-3'),
-        107: (-2, -1,'n_alpha'),
-        108:(-4, -3,'n_2alpha'),
-        109:(-6, -5,'n_3alpha')
+        16: (0,-1,'N2N'),
+        17: (0,-2,'N3N'),
+        37: (0,-3,'N4N'),
+        102: (0, 1,'Ngamma'),
+        103: (-1, 1,'Np'),
+        104: (-1, 0,'Nd'),
+        105: (-1, -1,'Nt'),
+        106: (-2, 0,'NHe3'),
+        107: (-2, -1,'Nalpha'),
+        108:(-4, -3,'N2alpha'),
+        109:(-6, -5,'N3alpha')
     }
     MTlist = operation.keys()
     if flag not in MTlist:
@@ -116,7 +117,7 @@ def MT_fission(flag,nFission_filename): #this ID's fission types, progeny, and y
     nFissionFile = nFission_Path+'/'+nFission_filename
     nFission_List = os.listdir(nFission_Path)
     if nFission_filename not in nFission_List: # not all fissionable isotopes have yield information.
-        print(Yellow+'  No (n,f) data available for '+str(nFission_filename))
+        print(Yellow+'    ...no (n,f) data available for '+str(nFission_filename))
         fissType = flag
         FissP_ID = 'Unknown, no ENDF distribution given.'
         FissP_Yield = 'Unknown, no ENDF distribution given.'

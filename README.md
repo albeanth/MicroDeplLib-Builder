@@ -17,7 +17,7 @@ Python3.x+ is required. Originally built with Python 3.5.1 using a full Anaconda
 - zipfile
 - urlopen
 
-The package [colorama] (https://pypi.python.org/pypi/colorama) is used for pretty outputting. If not used, print statements will need to be adjusted.
+The package [colorama] (https://pypi.python.org/pypi/colorama) is used for pretty outputting. If not used, print statements will be standard.
 
 #### Execution
 The MicroDeplLib-Build.py script will initially look for the required NNDC ENDF7.1 files. If they do not exist, they a directory called **./ENDF7.1** will be created. The required sublibraries will be downloaded as zip files, unzipped, and moved into **./ENDF7.1**. Once moved, the original zip files are deleted. The execution of the program is as follows:
